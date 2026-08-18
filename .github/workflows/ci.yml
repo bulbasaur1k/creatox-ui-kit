@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      - name: Check formatting
+        run: bun run format:check
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Tests
+        run: bun run test
+
+      - name: Build library
+        run: bun run build
+
+      # A stylesheet with no utilities in it means Tailwind failed to scan the
+      # components, which builds green but ships an unstyled package.
+      - name: Verify stylesheet is not empty
+        run: |
+          test -s dist/styles.css
+          grep -q '.bg-raised' dist/styles.css
+          grep -q '.text-fg-muted' dist/styles.css
+          test -s dist/theme.css
+
+      - name: Build demo
+        run: bun run build:demo
+
+      - name: Build component docs
+        run: bun run ladle:build
+
+  # Pages deploys from main, not from the release tag: the github-pages
+  # environment only accepts protected branches, so a tag-triggered deploy is
+  # rejected outright. The showcase has no reason to wait for a release anyway.
+  pages:
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+      - run: bun run ladle:build -- --base=/creatox-ui-kit/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist-ladle
+
+      - id: deploy
+        uses: actions/deploy-pages@v4

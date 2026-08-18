@@ -1,0 +1,98 @@
+{
+  "name": "creatox-ui-kit",
+  "version": "0.6.0",
+  "description": "Web-native, object-centric React UI kit. Tailwind v4 tokens, CSS-first components, minimal JS runtime.",
+  "keywords": [
+    "react",
+    "ui-kit",
+    "design-system",
+    "tailwindcss",
+    "tailwind-v4",
+    "object-centric",
+    "css-first",
+    "headless"
+  ],
+  "license": "MIT",
+  "author": "Daniil Kozin",
+  "homepage": "https://github.com/bulbasaur1k/creatox-ui-kit#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bulbasaur1k/creatox-ui-kit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/bulbasaur1k/creatox-ui-kit/issues"
+  },
+  "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./styles.css": "./dist/styles.css",
+    "./theme.css": "./dist/theme.css",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "dev": "vite --mode demo",
+    "build": "vite build && vite build --mode theme",
+    "build:demo": "vite build --mode demo",
+    "preview": "vite preview --outDir dist-demo",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
+    "lint": "oxlint",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "prepublishOnly": "npm run typecheck && npm run test && npm run build",
+    "ladle": "ladle serve",
+    "ladle:build": "ladle build"
+  },
+  "peerDependencies": {
+    "react": ">=19.2",
+    "react-dom": ">=19.2"
+  },
+  "devDependencies": {
+    "@happy-dom/global-registrator": "^20.11.2",
+    "@happy-dom/global-registrator": "^20.11.2",
+    "@ladle/react": "^5.1.1",
+    "@tailwindcss/vite": "^4.1.0",
+    "@types/bun": "^1.3.14",
+    "@types/node": "^26.2.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.0.5",
+    "happy-dom": "^20.11.2",
+    "happy-dom": "^20.11.2",
+    "oxfmt": "^0.63.0",
+    "oxlint": "^1.78.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "tailwindcss": "^4.1.0",
+    "typescript": "^5.7.2",
+    "vite": "^8.2.1",
+    "vite-plugin-dts": "^5.0.3"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^3.6.0"
+  }
+}

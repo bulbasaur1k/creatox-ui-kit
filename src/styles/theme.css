@@ -1,0 +1,526 @@
+/* ==========================================================================
+   Design tokens as Tailwind theme values.
+
+   Every token here becomes two things at once: a CSS custom property and a
+   Tailwind utility. `--color-canvas` gives you both `var(--color-canvas)` and
+   `bg-canvas` / `text-canvas` / `border-canvas`.
+
+   Components in this kit never write `dark:` classes. Dark mode works by
+   re-declaring these same custom properties further down, so every utility
+   that references a token flips automatically. That keeps component markup
+   readable and makes retheming a matter of overriding variables, nothing else.
+   ========================================================================== */
+
+/* `static` because this is a library. Tailwind drops theme variables it did
+   not find used, and when the kit is built it has never seen the product's
+   markup — so without it a consumer would receive only the tokens the kit
+   happened to use itself, and `var(--color-info-surface)` in their own code
+   would resolve to nothing. */
+@theme static {
+  /* ── Spacing ───────────────────────────────────────────────────────────
+     Tailwind derives the whole scale from this one value, so `gap-1`… `p-16`
+     already sit on the 4px rhythm. No custom steps are needed or wanted.    */
+  --spacing: 0.25rem;
+
+  /* ── Surfaces ──────────────────────────────────────────────────────────
+     canvas    the page
+     subtle    wells, table headers, footers — recessed regions
+     raised    panels and controls sitting on the canvas
+     inset     machine output: code, logs, diffs
+     Containment is communicated by a border first, a background second.     */
+  --color-canvas: oklch(100% 0 0);
+  --color-subtle: oklch(97.6% 0.002 264);
+  --color-raised: oklch(100% 0 0);
+  --color-inset: oklch(96.4% 0.003 264);
+  --color-hover: oklch(96.2% 0.003 264);
+  --color-active: oklch(93.6% 0.004 264);
+  --color-selected: oklch(94.2% 0.003 264);
+  --color-overlay: oklch(100% 0 0);
+  --color-backdrop: oklch(21% 0.01 264 / 0.32);
+
+  /* ── Foreground ────────────────────────────────────────────────────────
+     Three levels of emphasis carry the hierarchy. Colour does not.          */
+  --color-fg: oklch(22% 0.008 264);
+  --color-fg-secondary: oklch(46% 0.009 264);
+  --color-fg-muted: oklch(61% 0.008 264);
+  --color-fg-inverted: oklch(99% 0 0);
+  --color-fg-accent: oklch(22% 0.008 264);
+
+  /* ── Lines ─────────────────────────────────────────────────────────────
+     Borders indicate structure. Thin, low contrast, never decorative.
+
+     `border` is the name to reach for; `line` is the same value under the
+     older name and stays for compatibility. Two names exist because the
+     shorter one is what people type from muscle memory, and a border colour
+     that does not exist is not an error in Tailwind — the utility is simply
+     never generated, `border` alone applies, and its colour falls back to
+     `currentColor`. A hairline silently becomes a black slab and the build
+     says nothing. base.css closes the same hole from the other side.        */
+  --color-border: oklch(94.6% 0.003 264);
+  --color-border-strong: oklch(84% 0.006 264);
+  --color-border-accent: oklch(56% 0.012 264);
+
+  /* The older names, as references rather than copies — so the dark theme
+     below overrides three variables instead of six, and a product that
+     retints one gets both names moving together. Plain `@theme`, not
+     `inline`: `inline` would bake the value in and the alias would stop
+     following an override. */
+  --color-line: var(--color-border);
+  --color-line-strong: var(--color-border-strong);
+  --color-line-accent: var(--color-border-accent);
+
+  /* ── Accent ────────────────────────────────────────────────────────────
+     Primary action, focus, selection. Used sparingly so signals stay loud.
+
+     The accent is neutral, not blue. Two reasons, and the second is the real
+     one. Both products that consume this kit draw their main action on
+     near-black and therefore used none of the accent variants — a default
+     nobody adopts is not a default. And the line above the foreground scale
+     already says it: three levels of emphasis carry the hierarchy, colour
+     does not. A blue primary button contradicted that in the one place it is
+     most visible.
+
+     Colour is still available: `--color-info` stays blue, and a product that
+     wants a coloured action overrides the five variables below. The status
+     palette is untouched — success, warning and danger must be colour.       */
+  --color-accent: oklch(22% 0.008 264);
+  --color-accent-hover: oklch(32% 0.009 264);
+  --color-accent-active: oklch(38% 0.01 264);
+  --color-accent-subtle: oklch(96% 0.003 264);
+  --color-accent-fg: oklch(99% 0 0);
+
+  /* ── Status ────────────────────────────────────────────────────────────
+     Each status has a mark colour (dots, rules), a tint for backgrounds and
+     a text colour that meets contrast on that tint.                         */
+  --color-success: oklch(58% 0.14 152);
+  --color-success-surface: oklch(95.5% 0.035 152);
+  --color-success-fg: oklch(41% 0.11 152);
+
+  --color-warning: oklch(73% 0.15 76);
+  --color-warning-surface: oklch(96% 0.04 82);
+  --color-warning-fg: oklch(46% 0.1 62);
+
+  --color-danger: oklch(56% 0.19 27);
+  --color-danger-surface: oklch(95.5% 0.03 27);
+  /* One step past the surface, for the moment a destructive control is held
+     down. Only danger carries this: the other statuses never become controls. */
+  --color-danger-active: oklch(91% 0.05 27);
+  --color-danger-fg: oklch(45% 0.17 27);
+
+  --color-info: oklch(58% 0.12 242);
+  --color-info-surface: oklch(95.5% 0.03 242);
+  --color-info-fg: oklch(43% 0.11 242);
+
+  --color-neutral: oklch(64% 0.008 264);
+  --color-neutral-surface: oklch(96% 0.003 264);
+  --color-neutral-fg: oklch(42% 0.008 264);
+
+  /* ── Typography ────────────────────────────────────────────────────────
+     Sizes are named by role, not by scale position. `text-ui` is the default
+     for interface chrome; `text-reading` is for prose that is actually read.
+     The base is 13px because this is a productivity interface.              */
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'Noto Sans', sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, 'SF Mono', 'JetBrains Mono', Menlo, Consolas,
+    'Liberation Mono', monospace;
+
+  --text-micro: 0.6875rem; /* 11px — column captions, uppercase labels */
+  --text-micro--line-height: 1.35;
+  --text-meta: 0.75rem; /* 12px — secondary and supporting text */
+  --text-meta--line-height: 1.4;
+  --text-ui: 0.8125rem; /* 13px — default interface text */
+  --text-ui--line-height: 1.45;
+  --text-reading: 0.9375rem; /* 15px — prose, documents */
+  --text-reading--line-height: 1.6;
+  --text-title: 1.125rem; /* 18px — section identity */
+  --text-title--line-height: 1.25;
+  --text-identity: 1.375rem; /* 22px — the object being viewed */
+  --text-identity--line-height: 1.2;
+  --text-identity--letter-spacing: -0.011em;
+  --text-display: 1.75rem; /* 28px — page-level identity, used rarely */
+  --text-display--line-height: 1.15;
+  --text-display--letter-spacing: -0.015em;
+
+  /* ── Layout thresholds ─────────────────────────────────────────────────
+     The widths at which the workspace rearranges. In `--container-*`, so
+     each one is both `max-w-app` and a container-query variant — the layouts
+     ask `@max-wide/page:` instead of repeating a number eleven times.
+
+     They are container widths, not breakpoints: `Split` inside a narrow
+     panel has to behave like `Split` on a narrow page, and a media query
+     cannot see that. `Root` names the container `page`.                     */
+  --container-narrow: 40rem; /* a horizontal field gives up and stacks */
+  --container-medium: 46rem; /* the workspace becomes one column */
+  --container-wide: 68rem; /* the context region moves under the object */
+  --container-app: 90rem; /* the widest the workspace is allowed to get */
+
+  /* ── Shape ─────────────────────────────────────────────────────────────
+     Restrained by design. `rounded-full` stays available but is reserved for
+     compact labels, filters and binary controls — never panels or buttons.  */
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+
+  /* Controls carry their own radius so a product can round every button,
+     input and select — up to a full pill — without also rounding panels,
+     dialogs and tables. That split is why it is a separate token: the two
+     consumers both wanted pill controls inside square containers, and with
+     one radius scale the only way to get there was per-element overrides. */
+  --radius-control: 8px;
+
+  /* ── Elevation ─────────────────────────────────────────────────────────
+     Only transient layers cast a shadow. Static structure uses borders.     */
+  --shadow-popover:
+    0 1px 1px oklch(21% 0.01 264 / 0.04), 0 4px 12px -3px oklch(21% 0.01 264 / 0.14);
+  --shadow-overlay:
+    0 1px 1px oklch(21% 0.01 264 / 0.04), 0 8px 24px -6px oklch(21% 0.01 264 / 0.16);
+
+  /* ── Motion ────────────────────────────────────────────────────────────
+     Motion explains what changed. Fast, subtle, interruptible.
+
+     Durations are a closed set, same as spacing. A component that needs a
+     number reaches for one of these three rather than inventing a value, so
+     the whole interface can be slowed down or sped up from one place — and
+     so `prefers-reduced-motion` in base.css has one contract to switch off.
+
+       instant — the answer to a press. Must land inside the same frame the
+                 finger is still down, or it reads as lag rather than feedback.
+       snap    — a state change on something already on screen.
+       enter   — a layer arriving or leaving: popover, dialog, backdrop.     */
+  --ease-snap: cubic-bezier(0.2, 0.8, 0.3, 1);
+
+  --duration-instant: 60ms;
+  --duration-snap: 120ms;
+  --duration-enter: 180ms;
+
+  /* ── Control sizing ────────────────────────────────────────────────────
+     Two rows exist: this one and the touch one below.
+
+     The default is a desktop row at 32 / 36 / 40. It used to be 24 / 28 / 34,
+     which was the density of a data table applied to every control in the
+     product — an input at 28px next to body text reads as unfinished, and
+     both consumers overrode it rather than use it. 36px is where the rest of
+     the web sits, and a table can still be dense: `Table` has its own
+     density, and that is the place for it.
+
+     Height, text size and padding travel together. A 44px control with 13px
+     text inside reads as a small control that has been stretched, so the
+     three can never be set independently — which is exactly what happened
+     when a product overrode only the height.
+
+     The names are Tailwind's, not ours. Heights and paddings sit in
+     `--spacing-*` and text sizes in `--text-*`, which is what makes
+     `h-control-md`, `size-control-sm`, `px-field-md` and `text-control-lg`
+     exist without anyone writing them: Tailwind generates a utility for every
+     value in a namespace it knows. Named outside one — `--size-control-md`,
+     as these were — a token is an ordinary custom property, every use is an
+     `h-[var(…)]` escape hatch, and a product extending the kit gets nothing
+     to autocomplete.                                                        */
+  --spacing-control-sm: 2rem; /* 32px */
+  --spacing-control-md: 2.25rem; /* 36px */
+  --spacing-control-lg: 2.5rem; /* 40px */
+
+  --text-control-sm: 0.8125rem; /* 13px */
+  --text-control-md: 0.875rem; /* 14px */
+  --text-control-lg: 0.9375rem; /* 15px */
+
+  /* Two padding families, because a button and an input want different room.
+     An input's padding is a text inset and stays tight; a button's padding is
+     its hit area either side of a short label, and a label with 12px of air
+     around it reads as cramped at any height. */
+  --spacing-field-sm: 0.5rem; /* 8px */
+  --spacing-field-md: 0.75rem; /* 12px */
+  --spacing-field-lg: 1rem; /* 16px */
+
+  --spacing-button-sm: 0.75rem; /* 12px */
+  --spacing-button-md: 1rem; /* 16px */
+  --spacing-button-lg: 1.5rem; /* 24px */
+
+  /* A field's label and its message, one step quieter than the control they
+     belong to. They are here rather than as fixed `text-meta` classes because
+     they have to move with the density too — a 12px label under a 44px input
+     is the row coming apart, which is the whole failure this file is fixing. */
+  --text-field-sm: 0.6875rem; /* 11px */
+  --text-field-md: 0.75rem; /* 12px */
+  --text-field-lg: 0.8125rem; /* 13px */
+
+  /* Checkbox, radio and switch are sized apart from the text controls: they
+     are square marks, not rows, and their internals are derived from these
+     so the density switch moves the mark and the knob with the box.         */
+  --spacing-choice: 0.95rem;
+  --spacing-switch-block: 1rem;
+  --spacing-switch-inline: 1.75rem;
+}
+
+/* The durations as utilities. Tailwind has no theme namespace for
+   transition-duration, so without these `duration-120` would put the number
+   back in the markup — exactly what the tokens exist to prevent.
+
+   They live in theme.css rather than base.css because this is the file that
+   ships as source: a product running its own Tailwind imports it and gets the
+   same three utilities its components can use. */
+@utility duration-instant {
+  --tw-duration: var(--duration-instant);
+  transition-duration: var(--duration-instant);
+}
+
+@utility duration-snap {
+  --tw-duration: var(--duration-snap);
+  transition-duration: var(--duration-snap);
+}
+
+@utility duration-enter {
+  --tw-duration: var(--duration-enter);
+  transition-duration: var(--duration-enter);
+}
+
+/* The control row, as one functional utility rather than one per size.
+
+   `--value(--spacing-control-*)` resolves the suffix against the namespace,
+   so `control-md` reads `--spacing-control-md`, `--text-control-md` and
+   `--spacing-field-md` in one go. Three declarations instead of three
+   near-identical blocks, and a product that adds `--spacing-control-xl`
+   alongside the matching text and padding gets `control-xl` for nothing —
+   the kit does not have to know the size exists.
+
+   Why a composite at all, when `h-control-md text-control-md px-field-md`
+   now also works: height, text and padding have to move together, and three
+   classes in the markup is three chances to move one and forget the others.
+   `size="md"` is one class, and what it means is decided here — by the
+   density in force, not by the component.
+
+   It also republishes its padding as `--cx-control-pad`, because a couple of
+   controls place something inside that padding — the select's chevron — and
+   the alternative is hard-coding the inset per size in components.css.      */
+@utility control-* {
+  --cx-control-pad: --value(--spacing-field- *);
+  block-size: --value(--spacing-control- *);
+  font-size: --value(--text-control- *);
+  padding-inline: var(--cx-control-pad);
+}
+
+/* The same row with a button's roomier padding. Separate rather than layered
+   on top of `control-*`, because two utilities both setting `padding-inline`
+   would leave which one wins to the order Tailwind happens to emit them in. */
+@utility button-* {
+  --cx-control-pad: --value(--spacing-button- *);
+  block-size: --value(--spacing-control- *);
+  font-size: --value(--text-control- *);
+  padding-inline: var(--cx-control-pad);
+}
+
+/* ==========================================================================
+   Density.
+
+   The second size row, and the reason it is a root attribute rather than a
+   fourth value of `size`: touch is a property of the device the interface is
+   running on, not of the individual button. A phone wants every control at
+   thumb size, and asking each call site to say so is asking for the one that
+   forgets — which is how a 28px input ends up next to a 48px button.
+
+   Because only the variables change, no component takes a prop, and a field's
+   label, its input and the error under it stay one row: they all resolve the
+   same tokens. Same mechanism as the theme attribute above.
+   ========================================================================== */
+:root[data-cx-density='touch'],
+.cx-root[data-cx-density='touch'] {
+  /* 48px is the middle step on purpose: comfortably past the 44px both Apple
+     and Google call the minimum, and the size both products had already
+     settled on by hand. `size="md"` — the default nobody has to think about
+     — is therefore already the size a thumb needs.                          */
+  --spacing-control-sm: 2.5rem; /* 40px */
+  --spacing-control-md: 3rem; /* 48px */
+  --spacing-control-lg: 3.5rem; /* 56px */
+
+  --text-control-sm: 0.9375rem; /* 15px */
+  --text-control-md: 0.9375rem; /* 15px */
+  --text-control-lg: 1.0625rem; /* 17px */
+
+  --spacing-field-sm: 0.875rem; /* 14px */
+  --spacing-field-md: 1rem; /* 16px */
+  --spacing-field-lg: 1.25rem; /* 20px */
+
+  --spacing-button-sm: 1.25rem; /* 20px */
+  --spacing-button-md: 1.5rem; /* 24px */
+  --spacing-button-lg: 1.75rem; /* 28px */
+
+  --text-field-sm: 0.75rem; /* 12px */
+  --text-field-md: 0.8125rem; /* 13px */
+  --text-field-lg: 0.9375rem; /* 15px */
+
+  --spacing-choice: 1.25rem;
+  --spacing-switch-block: 1.5rem;
+  --spacing-switch-inline: 2.625rem;
+
+  /* A 48px control with an 8px corner reads as a desktop control that grew.
+     Not a pill — that is a brand decision, and `--radius-control` is where a
+     product makes it.                                                       */
+  --radius-control: 12px;
+}
+
+/* A true hairline. At dpr 1 a border cannot be thinner than one device pixel,
+   but on the retina screens this is designed for, 1px means two — which is what
+   makes ruled tables read as heavy. */
+:root {
+  --cx-hairline: 1px;
+}
+
+@media (min-resolution: 2dppx) {
+  :root {
+    --cx-hairline: 0.5px;
+  }
+}
+
+/* ==========================================================================
+   Dark theme.
+
+   Only the token values change. Because every utility in the kit resolves a
+   token, the whole interface re-themes without a single `dark:` class.
+   ========================================================================== */
+
+/* stylelint-disable-next-line no-duplicate-selectors */
+:root,
+::backdrop {
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-cx-theme='light']),
+  :root:not([data-cx-theme='light']) ::backdrop {
+    color-scheme: dark;
+
+    --color-canvas: oklch(19.5% 0.008 264);
+    --color-subtle: oklch(22.5% 0.009 264);
+    --color-raised: oklch(23.5% 0.009 264);
+    --color-inset: oklch(17% 0.008 264);
+    --color-hover: oklch(26% 0.01 264);
+    --color-active: oklch(29% 0.011 264);
+    --color-selected: oklch(30% 0.011 264);
+    --color-overlay: oklch(24.5% 0.009 264);
+    --color-backdrop: oklch(12% 0.008 264 / 0.6);
+
+    --color-fg: oklch(95% 0.003 264);
+    --color-fg-secondary: oklch(74% 0.007 264);
+    --color-fg-muted: oklch(58% 0.008 264);
+    --color-fg-inverted: oklch(18% 0.008 264);
+    --color-fg-accent: oklch(95% 0.003 264);
+
+    --color-border: oklch(29% 0.009 264);
+    --color-border-strong: oklch(38% 0.011 264);
+    --color-border-accent: oklch(58% 0.012 264);
+
+    /* The accent inverts rather than lightens: on a dark canvas the loudest
+       neutral is the light end, so the main action becomes near-white with
+       dark text on it. The blue accent did not need this — it is the price
+       of a neutral one, and it is the same trade every neutral system makes. */
+    --color-accent: oklch(92% 0.003 264);
+    --color-accent-hover: oklch(85% 0.004 264);
+    --color-accent-active: oklch(78% 0.005 264);
+    --color-accent-subtle: oklch(28% 0.009 264);
+    --color-accent-fg: oklch(19% 0.008 264);
+
+    --color-success: oklch(70% 0.15 152);
+    --color-success-surface: oklch(28% 0.05 152);
+    --color-success-fg: oklch(83% 0.12 152);
+
+    --color-warning: oklch(78% 0.15 76);
+    --color-warning-surface: oklch(30% 0.05 70);
+    --color-warning-fg: oklch(86% 0.12 82);
+
+    --color-danger: oklch(66% 0.19 27);
+    --color-danger-surface: oklch(29% 0.07 27);
+    --color-danger-active: oklch(34% 0.09 27);
+    --color-danger-fg: oklch(83% 0.12 27);
+
+    --color-info: oklch(70% 0.13 242);
+    --color-info-surface: oklch(28% 0.05 242);
+    --color-info-fg: oklch(84% 0.1 242);
+
+    --color-neutral: oklch(58% 0.008 264);
+    --color-neutral-surface: oklch(27% 0.008 264);
+    --color-neutral-fg: oklch(76% 0.007 264);
+
+    --shadow-popover: 0 1px 1px oklch(0% 0 0 / 0.3), 0 4px 12px -3px oklch(0% 0 0 / 0.45);
+    --shadow-overlay: 0 1px 1px oklch(0% 0 0 / 0.3), 0 8px 24px -6px oklch(0% 0 0 / 0.5);
+  }
+}
+
+/* Explicit opt-in, so a product can offer a theme switch that beats the OS. */
+:root[data-cx-theme='dark'],
+:root[data-cx-theme='dark'] ::backdrop {
+  color-scheme: dark;
+
+  --color-canvas: oklch(19.5% 0.008 264);
+  --color-subtle: oklch(22.5% 0.009 264);
+  --color-raised: oklch(23.5% 0.009 264);
+  --color-inset: oklch(17% 0.008 264);
+  --color-hover: oklch(26% 0.01 264);
+  --color-active: oklch(29% 0.011 264);
+  --color-selected: oklch(30% 0.011 264);
+  --color-overlay: oklch(24.5% 0.009 264);
+  --color-backdrop: oklch(12% 0.008 264 / 0.6);
+
+  --color-fg: oklch(95% 0.003 264);
+  --color-fg-secondary: oklch(74% 0.007 264);
+  --color-fg-muted: oklch(58% 0.008 264);
+  --color-fg-inverted: oklch(18% 0.008 264);
+  --color-fg-accent: oklch(95% 0.003 264);
+
+  --color-border: oklch(29% 0.009 264);
+  --color-border-strong: oklch(38% 0.011 264);
+  --color-border-accent: oklch(58% 0.012 264);
+
+  --color-accent: oklch(92% 0.003 264);
+  --color-accent-hover: oklch(85% 0.004 264);
+  --color-accent-active: oklch(78% 0.005 264);
+  --color-accent-subtle: oklch(28% 0.009 264);
+  --color-accent-fg: oklch(19% 0.008 264);
+
+  --color-success: oklch(70% 0.15 152);
+  --color-success-surface: oklch(28% 0.05 152);
+  --color-success-fg: oklch(83% 0.12 152);
+
+  --color-warning: oklch(78% 0.15 76);
+  --color-warning-surface: oklch(30% 0.05 70);
+  --color-warning-fg: oklch(86% 0.12 82);
+
+  --color-danger: oklch(66% 0.19 27);
+  --color-danger-surface: oklch(29% 0.07 27);
+  --color-danger-fg: oklch(83% 0.12 27);
+
+  --color-info: oklch(70% 0.13 242);
+  --color-info-surface: oklch(28% 0.05 242);
+  --color-info-fg: oklch(84% 0.1 242);
+
+  --color-neutral: oklch(58% 0.008 264);
+  --color-neutral-surface: oklch(27% 0.008 264);
+  --color-neutral-fg: oklch(76% 0.007 264);
+
+  --shadow-popover: 0 1px 1px oklch(0% 0 0 / 0.3), 0 4px 12px -3px oklch(0% 0 0 / 0.45);
+  --shadow-overlay: 0 1px 1px oklch(0% 0 0 / 0.3), 0 8px 24px -6px oklch(0% 0 0 / 0.5);
+}
+
+/* `touch:` for the one-off a product needs on a thumb-sized screen and
+   nowhere else. Kit components do not use it — they resolve the tokens the
+   density switch redefines, which is the whole point of doing it that way. */
+@custom-variant touch {
+  &:where([data-cx-density='touch'], [data-cx-density='touch'] *) {
+    @slot;
+  }
+}
+
+/* A `dark:` variant is still exposed for one-off product overrides, wired to
+   the same attribute the kit uses. Kit components do not rely on it. */
+@custom-variant dark {
+  @media (prefers-color-scheme: dark) {
+    &:where(:not([data-cx-theme='light'] *):not([data-cx-theme='light'])) {
+      @slot;
+    }
+  }
+  &:where([data-cx-theme='dark'], [data-cx-theme='dark'] *) {
+    @slot;
+  }
+}

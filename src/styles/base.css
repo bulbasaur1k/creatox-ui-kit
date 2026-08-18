@@ -1,0 +1,120 @@
+/* ==========================================================================
+   Base layer — the shared interaction contract.
+   Anything here applies to every component and is deliberately not
+   overridable per component: focus, disabled affordance, scrollbars.
+   ========================================================================== */
+
+@layer base {
+  /* The application root. Establishes typography and the named container that
+     space-driven layouts query. Rendered by <Root>. */
+  .cx-root {
+    font-family: var(--font-sans);
+    font-size: var(--text-ui);
+    line-height: var(--text-ui--line-height);
+    color: var(--color-fg);
+    background-color: var(--color-canvas);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-variant-numeric: tabular-nums;
+
+    /* Named `page` so Tailwind's container variants read naturally:
+       `@max-[68rem]/page:…` in any component below this root. */
+    container: page / inline-size;
+
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line-strong) transparent;
+  }
+
+  /* An element's border colour starts at `currentColor` in Tailwind v4, and a
+     border utility whose colour half names nothing — a token from another
+     design system, a typo, `border-border` before that token existed — is not
+     an error: the colour utility is simply never generated, `border` alone
+     applies, and the hairline comes out as text-coloured. A black slab where
+     a rule was meant, and the build says nothing.
+
+     Naming the default here makes that failure quiet and roughly right. It
+     costs nothing otherwise: every border utility sits in a later layer and
+     still wins. */
+  .cx-root,
+  .cx-root *,
+  .cx-root *::before,
+  .cx-root *::after,
+  dialog.cx-dialog,
+  dialog.cx-dialog *,
+  [popover].cx-popover,
+  [popover].cx-popover * {
+    border-color: var(--color-border);
+  }
+
+  /* One focus ring, everywhere, keyboard only. Focus is mandatory — §19. */
+  .cx-root :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+    border-radius: var(--radius-sm);
+  }
+
+  .cx-root :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  /* Disabled removes affordance; it is not merely a lighter colour. */
+  .cx-root :is([disabled], [aria-disabled='true']) {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+
+  /* Native dialogs and popovers live in the top layer, outside .cx-root, so
+     they need the typography contract applied directly. */
+  dialog.cx-dialog,
+  [popover].cx-popover {
+    font-family: var(--font-sans);
+    font-size: var(--text-ui);
+    line-height: var(--text-ui--line-height);
+    font-variant-numeric: tabular-nums;
+  }
+
+  dialog.cx-dialog :focus-visible,
+  [popover].cx-popover :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+    border-radius: var(--radius-sm);
+  }
+}
+
+/* Motion is a preference, not a decision the interface gets to make. Cutting
+   the durations rather than removing the declarations keeps every transition
+   and every `allow-discrete` step intact: popovers and dialogs still open and
+   close through the same code path, they just arrive at the end immediately.
+   Removing the transitions instead would strand `display` mid-flight.
+
+   `!important` is required, not decorative: Tailwind emits `duration-*` into a
+   later cascade layer than this one, so a utility would otherwise win. */
+@media (prefers-reduced-motion: reduce) {
+  .cx-root *,
+  .cx-root *::before,
+  .cx-root *::after,
+  dialog.cx-dialog,
+  dialog.cx-dialog *,
+  dialog.cx-dialog::backdrop,
+  [popover].cx-popover,
+  [popover].cx-popover * {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Hides an element visually while keeping it in the accessibility tree.
+   Used by the CSS-only components whose real control is a native input. */
+@utility sr-only-control {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}

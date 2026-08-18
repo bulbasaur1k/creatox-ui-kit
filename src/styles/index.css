@@ -1,0 +1,15 @@
+/* Single stylesheet for the kit. Consumers import this once:
+     import '@creatox/ui-kit/styles.css'
+
+   Products that run Tailwind themselves should instead import
+   '@creatox/ui-kit/theme.css' and add
+     @source "../node_modules/@creatox/ui-kit/dist";
+   so kit and product share one token set and one utility pass. */
+
+@import 'tailwindcss';
+@import './theme.css';
+@import './base.css';
+@import './components.css';
+
+/* Scan the kit's own components so the library build emits their utilities. */
+@source "../";

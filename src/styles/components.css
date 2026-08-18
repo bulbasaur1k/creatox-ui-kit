@@ -1,0 +1,760 @@
+/* ==========================================================================
+   The CSS that utilities cannot express.
+
+   Everything a Tailwind utility can say is said in the components' JSX. What
+   lands here is the platform-level machinery the kit leans on so that state
+   lives in the browser instead of in React: generated content from attributes,
+   anchor positioning, native form-control internals, sibling-driven tab state.
+
+   If you are tempted to add a rule here that `class="…"` could have expressed,
+   put it in the component instead.
+   ========================================================================== */
+
+/* ── Tooltip — zero JS, zero extra elements ───────────────────────────────
+   Add `data-cx-tooltip="…"` to any element. Appears on hover and on keyboard
+   focus. Text only by design: anything richer belongs in a Popover.        */
+@layer components {
+  [data-cx-tooltip] {
+    position: relative;
+  }
+
+  [data-cx-tooltip]::after {
+    content: attr(data-cx-tooltip);
+    position: absolute;
+    z-index: 30;
+    inset-block-end: calc(100% + --spacing(1));
+    inset-inline-start: 50%;
+    translate: -50% 0;
+    padding: 0.2rem --spacing(2);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-fg);
+    color: var(--color-canvas);
+    font-size: var(--text-meta);
+    line-height: 1.35;
+    white-space: nowrap;
+    max-inline-size: 20rem;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity var(--duration-snap) var(--ease-snap),
+      visibility var(--duration-snap);
+  }
+
+  [data-cx-tooltip]:hover::after,
+  [data-cx-tooltip]:focus-visible::after {
+    opacity: 1;
+    visibility: visible;
+    transition-delay: 350ms;
+  }
+
+  [data-cx-tooltip][data-tooltip-side='bottom']::after {
+    inset-block: calc(100% + --spacing(1)) auto;
+  }
+
+  [data-cx-tooltip][data-tooltip-side='end']::after {
+    inset-block: 50% auto;
+    inset-inline-start: calc(100% + --spacing(1));
+    translate: 0 -50%;
+  }
+
+  [data-cx-tooltip][data-tooltip-side='start']::after {
+    inset-block: 50% auto;
+    inset-inline: auto calc(100% + --spacing(1));
+    translate: 0 -50%;
+  }
+
+  /* Touch devices have no hover; the tooltip would fire on tap instead. */
+  @media (hover: none) {
+    [data-cx-tooltip]::after {
+      display: none;
+    }
+  }
+
+  /* ── Split — how the object workspace reflows ───────────────────────────
+     This is information architecture, not styling: as space runs out the
+     context region moves below the object, and then navigation collapses.
+     It lives here so no feature can re-implement it slightly differently.  */
+  .cx-split[data-regions='2'] {
+    grid-template-columns: minmax(13rem, 0.9fr) minmax(30rem, 3fr);
+  }
+
+  .cx-split[data-regions='3'] {
+    grid-template-columns:
+      minmax(13rem, 0.8fr)
+      minmax(30rem, 2.4fr)
+      minmax(17rem, 1fr);
+  }
+
+  .cx-split > * + * {
+    border-inline-start: 1px solid var(--color-line);
+    min-inline-size: 0;
+  }
+
+  /* The literals mirror `--container-wide` and `--container-medium`. They
+     cannot read the token: a container query condition takes no custom
+     property, the same way a media query does not. The variant form used in
+     the components — `@max-wide/page:` — is Tailwind rewriting the name into
+     exactly this, which is why the markup never repeats a number and these
+     two rules still do. */
+  @container page (width < 68rem) {
+    .cx-split[data-regions='3'] {
+      grid-template-columns: minmax(12rem, 0.8fr) minmax(0, 2.4fr);
+    }
+
+    .cx-split[data-regions='3'] > :nth-child(3) {
+      grid-column: 1 / -1;
+      border-inline-start: 0;
+      border-block-start: 1px solid var(--color-line);
+    }
+  }
+
+  @container page (width < 46rem) {
+    .cx-split[data-regions='2'],
+    .cx-split[data-regions='3'] {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .cx-split > * + * {
+      border-inline-start: 0;
+      border-block-start: 1px solid var(--color-line);
+    }
+
+    /* Navigation is redundant once the object fills the viewport. */
+    .cx-split > [data-cx-collapsible='true'] {
+      display: none;
+    }
+  }
+
+  /* ── Popover — native [popover], positioned by CSS ──────────────────────
+     Open/close, light dismiss, Escape and top-layer stacking all come from
+     the platform via `popovertarget`. No state, no effect, no listener.    */
+  .cx-popover {
+    position: absolute;
+    inset: auto;
+    margin: 0;
+
+    /* Entry and exit both, without a state machine. `display` and `overlay`
+       are discrete properties: `allow-discrete` holds the popover in the top
+       layer for the length of the transition instead of yanking it out on the
+       first frame, which is what makes a closing animation possible at all. */
+    opacity: 0;
+    translate: 0 -0.25rem;
+    transition:
+      opacity var(--duration-snap) var(--ease-snap),
+      translate var(--duration-snap) var(--ease-snap),
+      display var(--duration-snap) allow-discrete,
+      overlay var(--duration-snap) allow-discrete;
+  }
+
+  .cx-popover:popover-open {
+    opacity: 1;
+    translate: 0 0;
+  }
+
+  /* The opening frame. Without this the popover would appear at its final
+     values, because there is no previous style to transition from. */
+  @starting-style {
+    .cx-popover:popover-open {
+      opacity: 0;
+      translate: 0 -0.25rem;
+    }
+  }
+
+  @supports (anchor-name: --cx-a) {
+    .cx-popover {
+      position-anchor: var(--cx-anchor);
+      position-area: block-end span-inline-end;
+      position-try-fallbacks:
+        block-start span-inline-end,
+        block-end span-inline-start,
+        block-start span-inline-start;
+      margin-block-start: --spacing(1);
+
+      /* `position-area` makes the area itself the containing block, so the
+         available space is simply 100% of it — no measuring, no JS-computed
+         `--available-height` to keep in sync. */
+      max-block-size: min(24rem, 100%);
+    }
+
+    .cx-popover[data-align='end'] {
+      position-area: block-end span-inline-start;
+      position-try-fallbacks:
+        block-start span-inline-start,
+        block-end span-inline-end;
+    }
+
+    /* Menus that stand for the control they hang off — a select-alike — want
+       the trigger's width. `anchor-size()` reads it in CSS; the alternative is
+       a resize observer writing a pixel value into a style attribute. */
+    .cx-popover[data-match='anchor'] {
+      min-inline-size: anchor-size(width);
+    }
+  }
+
+  /* Engines without anchor positioning dock the popover to the bottom of the
+     viewport as a sheet, rather than dropping it in a meaningless centre. */
+  @supports not (anchor-name: --cx-a) {
+    .cx-popover {
+      position: fixed;
+      inset: auto 0 0 0;
+      margin-inline: auto;
+      max-inline-size: min(28rem, 100vw);
+      border-end-start-radius: 0;
+      border-end-end-radius: 0;
+
+      /* A sheet rises from the edge it is docked to, not from above. */
+      translate: 0 0.5rem;
+    }
+
+    @starting-style {
+      .cx-popover:popover-open {
+        translate: 0 0.5rem;
+      }
+    }
+  }
+
+  /* ── Dialog — native <dialog>, modal only ───────────────────────────────*/
+
+  /* Stated, not inherited. The user-agent gives a modal dialog `fixed` and a
+     merely-open one `absolute`, and `absolute` measures against the page
+     rather than the window — so a sheet pinned to `bottom: 0` would dock to
+     the foot of a two-thousand-pixel document instead of the foot of the
+     screen, which is exactly what "it opens somewhere below" looks like.
+
+     `showModal()` is what promotes it, and it is a call in an effect: markup
+     rendered with `open` on the server, a product that sets the attribute
+     itself, or one frame before hydration all leave the dialog open and not
+     modal. This costs nothing when it is modal and saves the layout when it
+     is not. */
+  .cx-dialog {
+    position: fixed;
+  }
+
+  .cx-dialog {
+    opacity: 0;
+    scale: 0.98;
+    translate: 0 0.5rem;
+    transition:
+      opacity var(--duration-enter) var(--ease-snap),
+      scale var(--duration-enter) var(--ease-snap),
+      translate var(--duration-enter) var(--ease-snap),
+      display var(--duration-enter) allow-discrete,
+      overlay var(--duration-enter) allow-discrete;
+  }
+
+  .cx-dialog[open] {
+    opacity: 1;
+    scale: 1;
+    translate: 0 0;
+  }
+
+  @starting-style {
+    .cx-dialog[open] {
+      opacity: 0;
+      scale: 0.98;
+      translate: 0 0.5rem;
+    }
+  }
+
+  .cx-dialog::backdrop {
+    background-color: var(--color-backdrop);
+    opacity: 0;
+    transition:
+      opacity var(--duration-enter) var(--ease-snap),
+      display var(--duration-enter) allow-discrete,
+      overlay var(--duration-enter) allow-discrete;
+  }
+
+  .cx-dialog[open]::backdrop {
+    opacity: 1;
+  }
+
+  @starting-style {
+    .cx-dialog[open]::backdrop {
+      opacity: 0;
+    }
+  }
+
+  /* A docked sheet neither scales nor slides. It fades, and that is a
+     deliberate retreat from a nicer animation.
+
+     The slide was `translate: 0 1.5rem` easing to zero. `translate` is a
+     compositor property, and a compositor that is not ticking — a hidden
+     tab, a throttled or backgrounded window, a renderer under load — leaves
+     the transition reported as running and the computed value parked on its
+     starting frame. For a centred dialog that costs half a centimetre of
+     misplacement. For a sheet already flush with the bottom edge it means the
+     footer, and its buttons, sit below the screen with no way to reach them.
+
+     An animation is not allowed to decide whether a control can be used. The
+     position is now stated once and never animated; only opacity moves, and
+     opacity cannot put anything out of reach. */
+  .cx-dialog[data-placement='sheet'],
+  .cx-dialog[data-placement='sheet'][open] {
+    scale: 1;
+    translate: none;
+  }
+
+  /* ── Toast region ───────────────────────────────────────────────────────
+     A manual popover, for the top layer alone: a toast raised while a modal
+     dialog is open has to be painted above it, and nothing outside the top
+     layer can be. The UA styles that come with `[popover]` — centred inset,
+     border, background, padding — are all unwanted here.                   */
+  .cx-toaster {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    padding: --spacing(4);
+    border: 0;
+    background: transparent;
+    overflow: visible;
+    max-inline-size: min(24rem, 100vw);
+
+    /* The region spans more than the toasts in it; without this it would
+       swallow clicks on whatever is underneath. Each toast takes its own
+       pointer events back. */
+    pointer-events: none;
+  }
+
+  .cx-toaster[data-placement='bottom-end'],
+  .cx-toaster[data-placement='bottom-center'] {
+    inset-block-end: 0;
+    padding-block-end: calc(--spacing(4) + env(safe-area-inset-bottom));
+  }
+
+  .cx-toaster[data-placement='top-end'],
+  .cx-toaster[data-placement='top-center'] {
+    inset-block-start: 0;
+    padding-block-start: calc(--spacing(4) + env(safe-area-inset-top));
+  }
+
+  .cx-toaster[data-placement='bottom-end'],
+  .cx-toaster[data-placement='top-end'] {
+    inset-inline-end: 0;
+  }
+
+  .cx-toaster[data-placement='bottom-center'],
+  .cx-toaster[data-placement='top-center'] {
+    inset-inline: 0;
+    margin-inline: auto;
+  }
+
+  /* Entry only. React takes the node out on dismissal, so there is nothing
+     left to transition out of — the exit is the removal. */
+  .cx-toast {
+    transition:
+      opacity var(--duration-enter) var(--ease-snap),
+      translate var(--duration-enter) var(--ease-snap);
+  }
+
+  @starting-style {
+    .cx-toast {
+      opacity: 0;
+      translate: 0 0.5rem;
+    }
+  }
+
+  .cx-toaster[data-placement^='top'] {
+    @starting-style {
+      .cx-toast {
+        translate: 0 -0.5rem;
+      }
+    }
+  }
+
+  /* ── Native form-control internals ──────────────────────────────────────
+     The controls stay native inputs; only their painted parts are replaced.
+     Marks are drawn with clip-path so the kit carries no icon dependency.  */
+  .cx-choice-control {
+    appearance: none;
+    display: grid;
+    place-content: center;
+  }
+
+  .cx-choice-control[type='checkbox']::before,
+  .cx-choice-control[type='radio']::before {
+    content: '';
+    transform: scale(0);
+    transition: transform var(--duration-instant) var(--ease-snap);
+    background-color: var(--color-accent-fg);
+  }
+
+  /* The mark is a proportion of the box rather than a length, so the density
+     switch resizes the tick and the dot along with the control. */
+  .cx-choice-control[type='checkbox']::before {
+    inline-size: calc(var(--spacing-choice) * 0.63);
+    block-size: calc(var(--spacing-choice) * 0.63);
+    clip-path: polygon(14% 45%, 0 60%, 39% 100%, 100% 22%, 85% 8%, 39% 70%);
+  }
+
+  .cx-choice-control[type='radio']::before {
+    inline-size: calc(var(--spacing-choice) * 0.44);
+    block-size: calc(var(--spacing-choice) * 0.44);
+    border-radius: 999px;
+  }
+
+  .cx-choice-control:checked::before {
+    transform: scale(1);
+  }
+
+  /* Press feedback for a control whose hit area is the label around it. A
+     utility cannot say this: the state belongs to the ancestor and the paint
+     belongs to the control's replaced parts. Without it a tap on a checkbox
+     row does nothing visible until the state has already changed, which on a
+     phone reads as the tap having been missed. */
+  .cx-choice-control:active:not(:disabled),
+  label:active > .cx-choice-control:not(:disabled) {
+    border-color: var(--color-line-accent);
+  }
+
+  .cx-choice-control[type='checkbox']:indeterminate::before {
+    transform: scale(1);
+    clip-path: polygon(10% 42%, 90% 42%, 90% 58%, 10% 58%);
+  }
+
+  /* Toggle: a binary control, so a pill is the right shape here. */
+  .cx-toggle-control {
+    appearance: none;
+    position: relative;
+  }
+
+  /* Knob geometry is derived, not measured: the inset is what is left over
+     once the knob is inside the track, and the travel is the difference
+     between the track's two axes. Change either switch token and the whole
+     thing still lines up. */
+  .cx-toggle-control::after {
+    --cx-knob: calc(var(--spacing-switch-block) - 0.25rem);
+    --cx-knob-travel: calc(var(--spacing-switch-inline) - var(--spacing-switch-block));
+
+    content: '';
+    position: absolute;
+    inset-block-start: 0.125rem;
+    inset-inline-start: 0.125rem;
+    inline-size: var(--cx-knob);
+    block-size: var(--cx-knob);
+    border-radius: 999px;
+    background-color: var(--color-raised);
+    transition:
+      translate var(--duration-snap) var(--ease-snap),
+      inline-size var(--duration-instant) var(--ease-snap);
+  }
+
+  .cx-toggle-control:checked::after {
+    translate: var(--cx-knob-travel) 0;
+  }
+
+  /* The knob stretches while held, the way a physical switch gives before it
+     moves. Same reason as the choice controls: the press happens on the label. */
+  .cx-toggle-control:active:not(:disabled)::after,
+  label:active > .cx-toggle-control:not(:disabled)::after {
+    inline-size: calc(var(--cx-knob) + 0.2rem);
+  }
+
+  .cx-toggle-control:checked:active:not(:disabled)::after,
+  label:active > .cx-toggle-control:checked:not(:disabled)::after {
+    translate: calc(var(--cx-knob-travel) - 0.2rem) 0;
+  }
+
+  /* Textarea grows with its content — no resize observer, no auto-size hook. */
+  .cx-textarea {
+    field-sizing: content;
+  }
+
+  /* ── PinInput — one input, boxes drawn underneath ───────────────────────
+     The real control covers the whole row and is invisible rather than
+     hidden: it has to keep its size to stay clickable, keep its focus to
+     take the caret, and stay a plain text input for the platform to offer
+     the code above the keyboard. The characters the user sees are the
+     drawn slots; the input's own text would sit on top of them.            */
+  .cx-pin-input {
+    position: absolute;
+    inset: 0;
+    inline-size: 100%;
+    block-size: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: transparent;
+    caret-color: transparent;
+
+    /* Not `opacity: 0` and not `display: none`: text has to be invisible
+       while selection, autofill and the accessibility tree stay intact. */
+    text-shadow: none;
+    -webkit-text-fill-color: transparent;
+    cursor: pointer;
+  }
+
+  .cx-pin-input::selection {
+    background: transparent;
+  }
+
+  /* The active slot carries the focus indication, so the ring the base layer
+     would draw around the invisible input is suppressed here. */
+  .cx-pin-input:focus,
+  .cx-pin-input:focus-visible {
+    outline: none;
+  }
+
+  /* ── Slider — native range, repainted ───────────────────────────────────
+     The pseudo-elements cannot be grouped in one rule: an engine that does
+     not recognise one selector in a list drops the whole declaration, so
+     WebKit's and Firefox's have to be written out separately.
+
+     The filled part of the track is a gradient stopped at a custom property.
+     The alternative is a second element sized from the value in JS.         */
+  .cx-slider {
+    appearance: none;
+    block-size: var(--spacing-choice);
+  }
+
+  .cx-slider::-webkit-slider-runnable-track {
+    block-size: 0.25rem;
+    border-radius: 999px;
+    background:
+      linear-gradient(
+          to right,
+          var(--color-accent) var(--cx-slider-progress, 0%),
+          transparent var(--cx-slider-progress, 0%)
+        )
+        no-repeat,
+      var(--color-line-strong);
+  }
+
+  .cx-slider::-moz-range-track {
+    block-size: 0.25rem;
+    border-radius: 999px;
+    background: var(--color-line-strong);
+  }
+
+  .cx-slider::-moz-range-progress {
+    block-size: 0.25rem;
+    border-radius: 999px;
+    background: var(--color-accent);
+  }
+
+  .cx-slider::-webkit-slider-thumb {
+    appearance: none;
+    inline-size: var(--spacing-choice);
+    block-size: var(--spacing-choice);
+    /* The track is 4px and the thumb is not, so the thumb has to be pushed
+       back up by half the difference to stay centred on it. */
+    margin-block-start: calc((0.25rem - var(--spacing-choice)) / 2);
+    border: 1px solid var(--color-line-strong);
+    border-radius: 999px;
+    background: var(--color-raised);
+    transition: scale var(--duration-instant) var(--ease-snap);
+  }
+
+  .cx-slider::-moz-range-thumb {
+    inline-size: var(--spacing-choice);
+    block-size: var(--spacing-choice);
+    box-sizing: border-box;
+    border: 1px solid var(--color-line-strong);
+    border-radius: 999px;
+    background: var(--color-raised);
+    transition: scale var(--duration-instant) var(--ease-snap);
+  }
+
+  /* Press feedback: on a phone there is no hover, and without this the thumb
+     gives no sign it has been caught until the value has already moved. */
+  .cx-slider:active::-webkit-slider-thumb {
+    scale: 1.15;
+    border-color: var(--color-accent);
+  }
+
+  .cx-slider:active::-moz-range-thumb {
+    scale: 1.15;
+    border-color: var(--color-accent);
+  }
+
+  /* ── Progress — native <progress>, repainted ────────────────────────────
+     Value-less is indeterminate with no prop and no second component: the
+     stripe animation keys off `:indeterminate`, which the element sets.     */
+  .cx-progress {
+    appearance: none;
+    block-size: 0.375rem;
+    border: 0;
+    border-radius: 999px;
+    background-color: var(--color-inset);
+    overflow: hidden;
+  }
+
+  .cx-progress::-webkit-progress-bar {
+    background-color: var(--color-inset);
+    border-radius: 999px;
+  }
+
+  .cx-progress::-webkit-progress-value {
+    background-color: var(--cx-progress-tone, var(--color-accent));
+    border-radius: 999px;
+    transition: inline-size var(--duration-enter) var(--ease-snap);
+  }
+
+  .cx-progress::-moz-progress-bar {
+    background-color: var(--cx-progress-tone, var(--color-accent));
+    border-radius: 999px;
+  }
+
+  .cx-progress-success {
+    --cx-progress-tone: var(--color-success);
+  }
+
+  .cx-progress-warning {
+    --cx-progress-tone: var(--color-warning);
+  }
+
+  .cx-progress-danger {
+    --cx-progress-tone: var(--color-danger);
+  }
+
+  .cx-progress:indeterminate {
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      var(--cx-progress-tone, var(--color-accent)) 50%,
+      transparent 100%
+    );
+    background-size: 40% 100%;
+    background-repeat: no-repeat;
+    animation: cx-progress-sweep 1.2s linear infinite;
+  }
+
+  /* Firefox paints the bar full width when indeterminate, which would cover
+     the sweep above. */
+  .cx-progress:indeterminate::-moz-progress-bar {
+    background-color: transparent;
+  }
+
+  .cx-progress:indeterminate::-webkit-progress-bar {
+    background-color: transparent;
+  }
+
+  @keyframes cx-progress-sweep {
+    from {
+      background-position: -40% 0;
+    }
+    to {
+      background-position: 140% 0;
+    }
+  }
+
+  /* ── Tree — native <details>, so disclosure state costs nothing ─────────*/
+  .cx-tree-twisty::before {
+    content: '';
+    inline-size: 0.45em;
+    block-size: 0.45em;
+    flex-shrink: 0;
+    background-color: var(--color-fg-muted);
+    clip-path: polygon(0 0, 100% 50%, 0 100%);
+    transition: rotate var(--duration-snap) var(--ease-snap);
+  }
+
+  [open] > .cx-tree-twisty::before {
+    rotate: 90deg;
+  }
+
+  .cx-tree-node > summary {
+    list-style: none;
+  }
+
+  .cx-tree-node > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  /* Leaves reserve the twisty column so labels align with their siblings. */
+  .cx-tree-leaf::before {
+    content: '';
+    inline-size: 0.45em;
+    flex-shrink: 0;
+  }
+
+  /* ── Sort indicator ────────────────────────────────────────────────────*/
+  .cx-sort-mark::after {
+    content: '';
+    inline-size: 0.5em;
+    block-size: 0.5em;
+    opacity: 0;
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+    background-color: currentColor;
+    transition: opacity var(--duration-snap) var(--ease-snap);
+  }
+
+  .cx-sort-mark[aria-sort='ascending']::after {
+    opacity: 1;
+  }
+
+  .cx-sort-mark[aria-sort='descending']::after {
+    opacity: 1;
+    rotate: 180deg;
+  }
+
+  /* ── Local tabs — CSS-only panel switching ──────────────────────────────
+     Radio inputs carry the state, which buys native arrow-key navigation and
+     screen-reader semantics for nothing. Up to eight tabs; past that the
+     state is real navigation and belongs in the URL (see TabNav).          */
+  .cx-tabs > .cx-tab-panel {
+    display: none;
+  }
+
+  .cx-tabs > input:nth-of-type(1):checked ~ .cx-tab-panel:nth-of-type(1),
+  .cx-tabs > input:nth-of-type(2):checked ~ .cx-tab-panel:nth-of-type(2),
+  .cx-tabs > input:nth-of-type(3):checked ~ .cx-tab-panel:nth-of-type(3),
+  .cx-tabs > input:nth-of-type(4):checked ~ .cx-tab-panel:nth-of-type(4),
+  .cx-tabs > input:nth-of-type(5):checked ~ .cx-tab-panel:nth-of-type(5),
+  .cx-tabs > input:nth-of-type(6):checked ~ .cx-tab-panel:nth-of-type(6),
+  .cx-tabs > input:nth-of-type(7):checked ~ .cx-tab-panel:nth-of-type(7),
+  .cx-tabs > input:nth-of-type(8):checked ~ .cx-tab-panel:nth-of-type(8) {
+    display: block;
+  }
+
+  .cx-tabs > input:nth-of-type(1):checked ~ .cx-tablist > .cx-tab:nth-of-type(1),
+  .cx-tabs > input:nth-of-type(2):checked ~ .cx-tablist > .cx-tab:nth-of-type(2),
+  .cx-tabs > input:nth-of-type(3):checked ~ .cx-tablist > .cx-tab:nth-of-type(3),
+  .cx-tabs > input:nth-of-type(4):checked ~ .cx-tablist > .cx-tab:nth-of-type(4),
+  .cx-tabs > input:nth-of-type(5):checked ~ .cx-tablist > .cx-tab:nth-of-type(5),
+  .cx-tabs > input:nth-of-type(6):checked ~ .cx-tablist > .cx-tab:nth-of-type(6),
+  .cx-tabs > input:nth-of-type(7):checked ~ .cx-tablist > .cx-tab:nth-of-type(7),
+  .cx-tabs > input:nth-of-type(8):checked ~ .cx-tablist > .cx-tab:nth-of-type(8) {
+    color: var(--color-fg);
+    border-block-end-color: var(--color-accent);
+  }
+
+  /* The input is out of sight, so its focus has to show on the label. */
+  .cx-tabs > input:nth-of-type(1):focus-visible ~ .cx-tablist > .cx-tab:nth-of-type(1),
+  .cx-tabs > input:nth-of-type(2):focus-visible ~ .cx-tablist > .cx-tab:nth-of-type(2),
+  .cx-tabs > input:nth-of-type(3):focus-visible ~ .cx-tablist > .cx-tab:nth-of-type(3),
+  .cx-tabs > input:nth-of-type(4):focus-visible ~ .cx-tablist > .cx-tab:nth-of-type(4),
+  .cx-tabs > input:nth-of-type(5):focus-visible ~ .cx-tablist > .cx-tab:nth-of-type(5),
+  .cx-tabs > input:nth-of-type(6):focus-visible ~ .cx-tablist > .cx-tab:nth-of-type(6),
+  .cx-tabs > input:nth-of-type(7):focus-visible ~ .cx-tablist > .cx-tab:nth-of-type(7),
+  .cx-tabs > input:nth-of-type(8):focus-visible ~ .cx-tablist > .cx-tab:nth-of-type(8) {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+    border-radius: var(--radius-sm);
+  }
+}
+
+/* ── Utilities ─────────────────────────────────────────────────────────────*/
+
+/* Fades the scrollable edges so it reads as "there is more" — implemented
+   with background-attachment: local, so there is no scroll listener. */
+@utility scroll-fade {
+  background:
+    linear-gradient(var(--color-canvas) 30%, transparent) top / 100% 1.5rem no-repeat,
+    linear-gradient(transparent, var(--color-canvas) 70%) bottom / 100% 1.5rem no-repeat,
+    radial-gradient(farthest-side at 50% 0, oklch(21% 0.01 264 / 0.12), transparent) top /
+      100% 0.5rem no-repeat,
+    radial-gradient(farthest-side at 50% 100%, oklch(21% 0.01 264 / 0.12), transparent)
+      bottom / 100% 0.5rem no-repeat;
+  background-attachment: local, local, scroll, scroll;
+}
+
+/* Marks an element as the anchor a popover positions against. The component
+   sets both `data-cx-anchor` and the `--cx-anchor` name; this rule is the
+   only place that needs to know how the two connect. */
+@layer components {
+  [data-cx-anchor] {
+    anchor-name: var(--cx-anchor);
+  }
+}

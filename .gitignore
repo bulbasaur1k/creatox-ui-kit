@@ -1,0 +1,11 @@
+node_modules/
+dist/
+dist-demo/
+dist-ladle/
+*.tsbuildinfo
+.DS_Store
+.env
+.env.local
+.idea/
+.vscode/
+.claude/
