@@ -81,6 +81,22 @@
     outline-offset: 1px;
     border-radius: var(--radius-sm);
   }
+
+  /* Same contract as .cx-root above: the ring is for the keyboard. The top
+     layer needs it repeated for the same reason it repeats the typography. */
+  dialog.cx-dialog :focus:not(:focus-visible),
+  dialog.cx-sheet :focus:not(:focus-visible),
+  [popover].cx-popover :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  /* The sheet parks its opening focus on the body (see Sheet.tsx). That focus
+     is the browser's doing, not a keystroke, yet engines flag focus moved by
+     `showModal()` as focus-visible — so the ring is refused here explicitly.
+     The body sits outside the tab order; no keyboard path loses its ring. */
+  dialog.cx-sheet .cx-sheet-body:focus-visible {
+    outline: none;
+  }
 }
 
 /* Motion is a preference, not a decision the interface gets to make. Cutting

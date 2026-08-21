@@ -293,9 +293,18 @@ export function Sheet({
       </div>
 
       {children !== undefined && (
+        /* Focus opens here, not on the cross. A modal dialog hands focus to
+           its first focusable element, which is the dismiss button in the
+           header — and the browser, having moved focus itself, paints the
+           focus ring on it. A sheet that opens with a ringed cross looks like
+           it is asking to be closed. The body is where reading starts and
+           where arrow keys should scroll, so it takes the focus instead; it
+           is not in the tab order, and `base.css` keeps it unringed. */
         <div
+          tabIndex={-1}
+          autoFocus
           className={cx(
-            'min-h-0 flex-1 overflow-auto overscroll-contain px-4 pb-4',
+            'cx-sheet-body min-h-0 flex-1 overflow-auto overscroll-contain px-4 pb-4',
             // The inset only matters when there is no footer under it; with
             // one, the footer carries it instead.
             footer === undefined && 'pb-[max(env(safe-area-inset-bottom),--spacing(4))]',
