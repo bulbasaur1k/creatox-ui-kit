@@ -1,6 +1,6 @@
 {
   "name": "creatox-ui-kit",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "Web-native, object-centric React UI kit. Tailwind v4 tokens, CSS-first components, minimal JS runtime.",
   "keywords": [
     "react",
