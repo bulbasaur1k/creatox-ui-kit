@@ -142,7 +142,16 @@ export function Sheet({
       // Reopened mid-exit: drop the closing state and let the same slide
       // carry the sheet back up from wherever it had got to.
       delete dialog.dataset.closing
-      if (!dialog.open) dialog.showModal()
+      if (!dialog.open) {
+        dialog.showModal()
+        // Focus opens on the body, not the cross (see the body below for
+        // why). Imperative rather than the `autofocus` attribute: React
+        // renders `autoFocus` as a mount-time `.focus()` call, not as the
+        // attribute, so the dialog's own focusing steps never see it.
+        // `preventScroll` because the sheet is mid-slide: a scroll into view
+        // now would fight the transition for the frame.
+        dialog.querySelector<HTMLElement>('.cx-sheet-body')?.focus({ preventScroll: true })
+      }
       return
     }
 
@@ -298,11 +307,11 @@ export function Sheet({
            header — and the browser, having moved focus itself, paints the
            focus ring on it. A sheet that opens with a ringed cross looks like
            it is asking to be closed. The body is where reading starts and
-           where arrow keys should scroll, so it takes the focus instead; it
-           is not in the tab order, and `base.css` keeps it unringed. */
+           where arrow keys should scroll, so it takes the focus instead (the
+           effect above moves it after `showModal()`); it is not in the tab
+           order, and `base.css` keeps it unringed. */
         <div
           tabIndex={-1}
-          autoFocus
           className={cx(
             'cx-sheet-body min-h-0 flex-1 overflow-auto overscroll-contain px-4 pb-4',
             // The inset only matters when there is no footer under it; with
