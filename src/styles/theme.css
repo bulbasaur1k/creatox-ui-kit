@@ -374,6 +374,57 @@
   }
 }
 
+/* The three heights a `Sheet` stops at. Shares of the viewport rather than
+   lengths: what a stop has to mean is "how much of the page is left", and
+   that is a proportion — a sheet fixed at 24rem is a peek on a desktop and
+   the whole screen on a phone.
+
+   `dvh` and not `vh`, for the reason `Dialog` gives: `100vh` is the viewport
+   with the address bar retracted, so anything measured against it stands
+   taller than the screen actually showing.
+
+   Half is 60 and not 50 because the sheet's own chrome comes out of it: the
+   handle, the title and a footer are the better part of 8rem, and at an
+   honest 50dvh the content the user came for gets less than half the screen.
+   Full stops at 92 so a strip of the page always shows — a sheet that covers
+   everything has become a page, and the user has lost the thing it belongs
+   to. A product overrides all three here, in one place. */
+:root {
+  --cx-sheet-peek: 30dvh;
+  --cx-sheet-half: 60dvh;
+  --cx-sheet-full: 92dvh;
+
+  /* The two durations outside the closed set of three, and the reason is the
+     distance. `--duration-enter` is what a layer arriving in place costs — a
+     popover eight pixels below its trigger, a dialog fading in where it
+     already is. A sheet crosses most of the screen, and 180ms over 700px is
+     motion fast enough to be a jump: the eye gets a start frame, an end frame
+     and nothing in between to follow.
+
+     They are not equal, and that is the same split every platform's motion
+     spec makes. Arriving is the event — the sheet is what the user is now
+     looking at, and it is worth the extra hundred milliseconds. Leaving is
+     not: once the decision is made, the sheet is in the way, and the only
+     requirement is that going away is visible rather than instant. Material's
+     emphasized durations sit in the same range, and the drawers that feel
+     like iOS are slower still, around half a second.
+
+     `--cx-` rather than a fourth and fifth `--duration-*`: only the sheet
+     uses these, and they are not new steps on the scale for the rest of the
+     kit to reach for. `prefers-reduced-motion` cuts them in base.css along
+     with everything else. */
+  --cx-sheet-enter: 400ms;
+  --cx-sheet-exit: 250ms;
+
+  /* Material's emphasized pair, and the names say what they are for. The
+     sheet arrives from off screen and settles — decelerate. It leaves from
+     rest and finishes against the edge of the screen — accelerate. The same
+     curve both ways is what makes a close start at full speed, and a close
+     that starts at full speed is the abrupt one. */
+  --cx-sheet-ease-enter: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --cx-sheet-ease-exit: cubic-bezier(0.3, 0, 0.8, 0.15);
+}
+
 /* ==========================================================================
    Dark theme.
 

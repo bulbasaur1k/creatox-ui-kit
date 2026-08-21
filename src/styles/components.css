@@ -227,7 +227,8 @@
      itself, or one frame before hydration all leave the dialog open and not
      modal. This costs nothing when it is modal and saves the layout when it
      is not. */
-  .cx-dialog {
+  .cx-dialog,
+  .cx-sheet {
     position: fixed;
   }
 
@@ -257,7 +258,8 @@
     }
   }
 
-  .cx-dialog::backdrop {
+  .cx-dialog::backdrop,
+  .cx-sheet::backdrop {
     background-color: var(--color-backdrop);
     opacity: 0;
     transition:
@@ -266,12 +268,14 @@
       overlay var(--duration-enter) allow-discrete;
   }
 
-  .cx-dialog[open]::backdrop {
+  .cx-dialog[open]::backdrop,
+  .cx-sheet[open]::backdrop {
     opacity: 1;
   }
 
   @starting-style {
-    .cx-dialog[open]::backdrop {
+    .cx-dialog[open]::backdrop,
+    .cx-sheet[open]::backdrop {
       opacity: 0;
     }
   }
@@ -294,6 +298,101 @@
   .cx-dialog[data-placement='sheet'][open] {
     scale: 1;
     translate: none;
+  }
+
+  /* ── Sheet — a <dialog> docked to the bottom edge, at three heights ─────
+     The height is the whole component, and it comes from an attribute: the
+     stop the sheet is at is readable in the DOM and overridable from a
+     product's stylesheet without a prop — the same contract as every other
+     state in the kit.
+
+     The height is never animated. It is set when the sheet opens and it stays
+     put, so a stop costs one style recalculation and nothing else. What moves
+     is `translate`, which is composited: the browser can slide the sheet up
+     without laying out the list inside it a single time. This is the one
+     thing every drawer in the wild agrees on — Vaul moves by `translate3d`
+     and says so loudly, having measured the frames it lost animating a
+     property the children had to be recalculated for.
+
+     Which leaves the objection the kit raises against `translate` under
+     `Dialog`: a sheet held off screen by a transform hides its footer if the
+     transition parks. It does not apply here. `translate: 0 0` is the resting
+     state and only the closed one is displaced, so a parked arrival shows a
+     sheet still on its way rather than a sheet with its buttons cut off — and
+     the close, which is the case where being stuck would trap the user, is
+     driven from JS with a timer behind it.                                  */
+  .cx-sheet {
+    block-size: var(--cx-sheet-height, var(--cx-sheet-half));
+    max-block-size: 100dvh;
+
+    /* Closed is off the bottom edge, by exactly its own height. A percentage
+       here is the element's own size, so it lands flush whichever stop it is
+       at, with no number to keep in step. */
+    translate: 0 100%;
+
+    /* The exit is stated on the closed state, and it is not the arrival
+       backwards: this one leaves from rest and finishes against the edge of
+       the screen, so it accelerates. Run out with the decelerating curve it
+       starts at full speed, which is the close that reads as a snap. */
+    transition:
+      translate var(--cx-sheet-exit) var(--cx-sheet-ease-exit),
+      display var(--cx-sheet-exit) allow-discrete,
+      overlay var(--cx-sheet-exit) allow-discrete;
+  }
+
+  .cx-sheet[open] {
+    translate: 0 0;
+
+    /* Arriving takes longer than leaving, and decelerates into place. Both
+       halves of what Material calls emphasized motion, and the reason is
+       attention: the sheet arriving is the thing to look at, the sheet
+       leaving is out of the way as soon as it is out of the way. */
+    transition:
+      translate var(--cx-sheet-enter) var(--cx-sheet-ease-enter),
+      display var(--cx-sheet-enter) allow-discrete,
+      overlay var(--cx-sheet-enter) allow-discrete;
+  }
+
+  /* The opening frame. Without it there is no previous style to slide from
+     and the sheet appears already in place. */
+  @starting-style {
+    .cx-sheet[open] {
+      translate: 0 100%;
+    }
+  }
+
+  /* The way out, and it runs on a sheet that is still open — the component
+     holds `close()` back until this has finished, because `close()` is what
+     takes the element out of the top layer, and only Chromium waits for an
+     `overlay` transition before doing it. Played here, the exit is the same
+     in every engine, and by the time the dialog actually closes there is
+     nothing left on screen to remove. */
+  .cx-sheet[open][data-closing] {
+    translate: 0 100%;
+    transition: translate var(--cx-sheet-exit) var(--cx-sheet-ease-exit);
+  }
+
+  .cx-sheet[data-detent='peek'] {
+    --cx-sheet-height: var(--cx-sheet-peek);
+  }
+
+  .cx-sheet[data-detent='half'] {
+    --cx-sheet-height: var(--cx-sheet-half);
+  }
+
+  .cx-sheet[data-detent='full'] {
+    --cx-sheet-height: var(--cx-sheet-full);
+  }
+
+  /* The backdrop goes with the sheet rather than on the shared dialog timing,
+     so the page does not come back before the sheet has left it. */
+  .cx-sheet::backdrop {
+    transition-duration: var(--cx-sheet-enter);
+  }
+
+  .cx-sheet[open][data-closing]::backdrop {
+    opacity: 0;
+    transition-duration: var(--cx-sheet-exit);
   }
 
   /* ── Toast region ───────────────────────────────────────────────────────

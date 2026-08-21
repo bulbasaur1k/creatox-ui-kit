@@ -66,6 +66,7 @@
   /* Native dialogs and popovers live in the top layer, outside .cx-root, so
      they need the typography contract applied directly. */
   dialog.cx-dialog,
+  dialog.cx-sheet,
   [popover].cx-popover {
     font-family: var(--font-sans);
     font-size: var(--text-ui);
@@ -74,6 +75,7 @@
   }
 
   dialog.cx-dialog :focus-visible,
+  dialog.cx-sheet :focus-visible,
   [popover].cx-popover :focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 1px;
@@ -96,6 +98,9 @@
   dialog.cx-dialog,
   dialog.cx-dialog *,
   dialog.cx-dialog::backdrop,
+  dialog.cx-sheet,
+  dialog.cx-sheet *,
+  dialog.cx-sheet::backdrop,
   [popover].cx-popover,
   [popover].cx-popover * {
     animation-duration: 1ms !important;

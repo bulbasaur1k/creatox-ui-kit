@@ -89,6 +89,7 @@ export {
   type MenuItemProps,
 } from './Popover'
 export { Dialog, type DialogProps } from './Dialog'
+export { Sheet, type SheetProps, type SheetDetent } from './Sheet'
 export { Panel, type PanelProps } from './Panel'
 export {
   Table,
