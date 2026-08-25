@@ -131,13 +131,23 @@ export function Dialog({
         </div>
       </div>
 
-      {/* No height of its own any more. It used to cap at `60vh`, which is a
-          share of the window rather than of the dialog — stacked on a header
-          and a footer that measure separately, the three could add up to more
-          than the dialog was allowed to be. As a flex item it simply takes
-          what is left and scrolls. */}
+      {/* No height of its own. It used to cap at `60vh`, which is a share of
+          the window rather than of the dialog — stacked on a header and a
+          footer that measure separately, the three could add up to more than
+          the dialog was allowed to be. Sized from its content instead, and
+          shrunk by the cap on the dialog when there is more of it than fits.
+
+          `flex-initial`, not `flex-1`, and the difference is the whole body
+          on WebKit. A dialog's height is `fit-content` — the user agent's,
+          and what makes a short dialog short — and against an indefinite
+          height WebKit resolves a `flex-basis: 0` item to nothing: the body
+          collapsed to its own padding, so a sheet showed its title, its
+          description and a two-millimetre strip of the form, with the field
+          and the buttons cut off below. Chromium measures the same markup
+          from the content and never showed it. Sized from content and allowed
+          to shrink, both engines agree. */}
       {children !== undefined && (
-        <div className="min-h-0 flex-1 overflow-auto px-4 pb-4">{children}</div>
+        <div className="min-h-0 flex-initial overflow-auto px-4 pb-4">{children}</div>
       )}
 
       {footer !== undefined && (
