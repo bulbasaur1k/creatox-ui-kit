@@ -150,7 +150,9 @@ export function Sheet({
         // attribute, so the dialog's own focusing steps never see it.
         // `preventScroll` because the sheet is mid-slide: a scroll into view
         // now would fight the transition for the frame.
-        dialog.querySelector<HTMLElement>('.cx-sheet-body')?.focus({ preventScroll: true })
+        dialog
+          .querySelector<HTMLElement>('.cx-sheet-body')
+          ?.focus({ preventScroll: true })
       }
       return
     }
