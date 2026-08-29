@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Sheet, type SheetDetent } from './Sheet'
 import { Button } from './Button'
 import { Field, Input } from './Field'
+import { Select } from './Listbox'
 import { KeyValue } from './KeyValue'
 import { List, ListItem } from './List'
 import { Status } from './Status'
@@ -113,6 +114,65 @@ export const Peek: Story = () => {
             { key: 'Период', value: 'последние 7 дней' },
           ]}
         />
+      </Sheet>
+    </Stack>
+  )
+}
+
+/**
+ * The regression case for anchoring. A sheet is a `<dialog>`, so both ends of
+ * the anchor — the select's trigger and its list — live in the top layer,
+ * where the CSS attachment silently fails and the list used to land hundreds
+ * of pixels above the field. The kit now verifies the attachment on open and
+ * redoes it by hand when it did not take: the list must open on the field,
+ * and follow it when the sheet body scrolls.
+ */
+export const WithSelect: Story = () => {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <Stack gap={4}>
+      <Button onClick={() => setOpen(true)}>Открыть фильтры</Button>
+
+      <Sheet
+        open={open}
+        onClose={() => setOpen(false)}
+        detent="half"
+        title="Фильтры"
+        footer={
+          <Button variant="primary" onClick={() => setOpen(false)}>
+            Применить
+          </Button>
+        }
+      >
+        <Stack gap={3}>
+          <Field label="Статус">
+            {(props) => (
+              <Select
+                {...props}
+                placeholder="Любой"
+                options={[
+                  { value: 'success', label: 'Успешные' },
+                  { value: 'failed', label: 'Упавшие' },
+                  { value: 'running', label: 'Идущие' },
+                ]}
+              />
+            )}
+          </Field>
+          <Field label="Период">
+            {(props) => (
+              <Select
+                {...props}
+                defaultValue="7d"
+                options={[
+                  { value: '24h', label: 'Сутки' },
+                  { value: '7d', label: 'Последние 7 дней' },
+                  { value: '30d', label: 'Последние 30 дней' },
+                ]}
+              />
+            )}
+          </Field>
+        </Stack>
       </Sheet>
     </Stack>
   )

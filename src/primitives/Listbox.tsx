@@ -156,6 +156,105 @@ function useIdent(): string {
 /** The DOM types have not caught up with the argument yet. */
 type ShowPopover = (options?: { source?: HTMLElement }) => void
 
+/* ── Anchoring that survives the top layer ─────────────────────────────────
+   CSS anchor positioning has a hole this component falls straight into: when
+   the trigger itself is in the top layer — inside an open `<dialog>`, which
+   is what `Sheet` and `Dialog` are — the popover promoted above it cannot
+   resolve the anchor name. `position-area` then does nothing, the popover
+   defaults take over, and the list lands hundreds of pixels from the control
+   (measured: trigger at y=647, list at y=142). The same markup outside a
+   dialog anchors fine.
+
+   So every open is verified. If the engine claims anchor support but the
+   list did not land against its trigger, the attachment is redone by hand
+   from `getBoundingClientRect` and kept true through scroll and resize for
+   as long as the list is open. Engines without anchor support are left
+   alone: their bottom-sheet fallback in the CSS is a choice, not a failure. */
+
+/** The gap `margin-block-start` leaves between trigger and list. */
+const ANCHOR_GAP = 4
+
+/** How far the list may sit from the trigger and still count as anchored.
+    Covers the gap above plus the -0.25rem translate of the opening frame. */
+const ANCHOR_SLACK = 12
+
+/** Breathing room kept to the viewport edge when placing by hand. */
+const EDGE_INSET = 8
+
+/** `max-block-size: min(24rem, 100%)` from the stylesheet, restated. */
+const LIST_MAX_BLOCK = 384
+
+function anchorSupported(): boolean {
+  return typeof CSS !== 'undefined' && CSS.supports('anchor-name: --cx-a')
+}
+
+/** Did the CSS attachment actually take? Anchored means the list sits just
+    above or below the trigger and shares its horizontal span — which is what
+    every `position-try` fallback resolves to. Anything else is the popover
+    defaults showing through. */
+function anchorHeld(anchor: HTMLElement, list: HTMLElement): boolean {
+  const a = anchor.getBoundingClientRect()
+  const l = list.getBoundingClientRect()
+  const beside =
+    Math.abs(l.top - a.bottom) <= ANCHOR_SLACK ||
+    Math.abs(a.top - l.bottom) <= ANCHOR_SLACK
+  const overlaps = l.right >= a.left - ANCHOR_SLACK && l.left <= a.right + ANCHOR_SLACK
+  return beside && overlaps
+}
+
+/** The CSS placement, redone in pixels: below the trigger, above when below
+    has no room, clamped to the viewport. Inline styles, so they win over the
+    anchor rules without touching them. */
+function placeByHand(anchor: HTMLElement, list: HTMLElement): void {
+  const a = anchor.getBoundingClientRect()
+  const style = list.style
+  style.position = 'fixed'
+  style.inset = 'auto'
+  style.margin = '0'
+  // An anchor can also resolve halfway: `position-area` then swaps the
+  // containing block for the anchor's area, and the `top`/`left` below would
+  // be measured from there instead of the viewport. Put back the viewport.
+  style.setProperty('position-area', 'none')
+  style.setProperty('position-try-fallbacks', 'none')
+  // `anchor-size(width)` resolved to nothing for the same reason the
+  // position did, so the trigger's width is carried over here too.
+  style.minWidth = `${a.width}px`
+
+  const below = window.innerHeight - a.bottom - ANCHOR_GAP - EDGE_INSET
+  const above = a.top - ANCHOR_GAP - EDGE_INSET
+  const down = below >= Math.min(list.offsetHeight, LIST_MAX_BLOCK) || below >= above
+  style.maxHeight = `${Math.max(Math.min(LIST_MAX_BLOCK, down ? below : above), 0)}px`
+
+  // Measured after the clamp, so a list placed above stands on the trigger
+  // rather than hanging from where its unclamped bottom would have been.
+  const height = list.offsetHeight
+  style.top = `${
+    down ? a.bottom + ANCHOR_GAP : Math.max(EDGE_INSET, a.top - ANCHOR_GAP - height)
+  }px`
+  style.left = `${Math.max(
+    EDGE_INSET,
+    Math.min(a.left, window.innerWidth - list.offsetWidth - EDGE_INSET),
+  )}px`
+}
+
+/** Returns the list to the stylesheet's care, for the next open in a place
+    where the anchor does resolve. */
+function releaseByHand(list: HTMLElement): void {
+  for (const prop of [
+    'position',
+    'inset',
+    'margin',
+    'position-area',
+    'position-try-fallbacks',
+    'min-width',
+    'max-height',
+    'top',
+    'left',
+  ]) {
+    list.style.removeProperty(prop)
+  }
+}
+
 /**
  * A popover element the component drives itself rather than through
  * `popovertarget`: the trigger has to stay open while the arrow keys move
@@ -168,7 +267,11 @@ type ShowPopover = (options?: { source?: HTMLElement }) => void
  * `popovertarget` attribute does not establish it either — on an
  * `<input type="text">` it is inert, because only buttons are valid invokers.
  */
-function usePopoverList(ident: string, onOpen?: () => void) {
+function usePopoverList(
+  ident: string,
+  onOpen?: () => void,
+  anchor?: () => HTMLElement | null,
+) {
   const listId = `cx-listbox-${ident}`
   const anchorStyle = { '--cx-anchor': `--cx-anchor-${ident}` } as CSSProperties
   const ref = useRef<HTMLDivElement>(null)
@@ -186,6 +289,37 @@ function usePopoverList(ident: string, onOpen?: () => void) {
   // first.
   const opened = useRef(onOpen)
   opened.current = onOpen
+  const anchorOf = useRef(anchor)
+  anchorOf.current = anchor
+
+  // The undo for a hand-made placement: unhooks scroll and resize, clears the
+  // inline styles. Null whenever the CSS attachment held on its own.
+  const handHeld = useRef<(() => void) | null>(null)
+
+  const releaseHold = () => {
+    handHeld.current?.()
+    handHeld.current = null
+  }
+
+  /** Runs right after `showPopover()`, when the browser has laid the list
+      out: checks the attachment took, and takes over if it did not. */
+  const holdAnchor = (anchor: HTMLElement | null) => {
+    releaseHold()
+    const node = ref.current
+    if (!node || !anchor || !anchorSupported() || anchorHeld(anchor, node)) return
+
+    const place = () => placeByHand(anchor, node)
+    place()
+    // Capture, because the scroll that moves the trigger happens in whatever
+    // ancestor scrolls — the sheet body, not the window.
+    window.addEventListener('scroll', place, true)
+    window.addEventListener('resize', place)
+    handHeld.current = () => {
+      window.removeEventListener('scroll', place, true)
+      window.removeEventListener('resize', place)
+      releaseByHand(node)
+    }
+  }
 
   useEffect(() => {
     const node = ref.current
@@ -198,9 +332,25 @@ function usePopoverList(ident: string, onOpen?: () => void) {
       const open = (event as unknown as { newState?: string }).newState === 'open'
       setExpanded(open)
       if (open) opened.current?.()
+      else releaseHold()
     }
     node.addEventListener('beforetoggle', onBeforeToggle)
-    return () => node.removeEventListener('beforetoggle', onBeforeToggle)
+    // The `open()` method below checks the attachment itself, synchronously.
+    // This covers the other way in: a click on the trigger goes through the
+    // browser's invoker, never touches `open()`, and only announces itself
+    // here — `toggle` rather than `beforetoggle`, because the check needs the
+    // list laid out, and before the toggle it is not.
+    const onToggle = (event: Event) => {
+      if ((event as unknown as { newState?: string }).newState === 'open') {
+        holdAnchor(anchorOf.current?.() ?? null)
+      }
+    }
+    node.addEventListener('toggle', onToggle)
+    return () => {
+      node.removeEventListener('beforetoggle', onBeforeToggle)
+      node.removeEventListener('toggle', onToggle)
+      releaseHold()
+    }
   }, [])
 
   const isOpen = () => {
@@ -222,6 +372,7 @@ function usePopoverList(ident: string, onOpen?: () => void) {
       const node = ref.current
       if (!node || typeof node.showPopover !== 'function' || isOpen()) return
       ;(node.showPopover as ShowPopover)(source ? { source } : undefined)
+      holdAnchor(source ?? null)
     },
     close() {
       const node = ref.current
@@ -476,14 +627,18 @@ export function Select({
   // trigger is not showing.
   const chosen = useRef(false)
 
-  const list = usePopoverList(ident, () => {
-    if (!chosen.current) {
-      active.index.current =
-        selectedIndex >= 0 ? selectedIndex : nextEnabled(items, -1, 1)
-    }
-    chosen.current = false
-    active.apply()
-  })
+  const list = usePopoverList(
+    ident,
+    () => {
+      if (!chosen.current) {
+        active.index.current =
+          selectedIndex >= 0 ? selectedIndex : nextEnabled(items, -1, 1)
+      }
+      chosen.current = false
+      active.apply()
+    },
+    () => active.trigger.current,
+  )
 
   // The list is rebuilt by React on every render; the highlight is not part
   // of that render, so it is put back afterwards.
@@ -707,9 +862,13 @@ export function Combobox({
 
   const ident = useIdent()
   const active = useActiveOption(`cx-listbox-${ident}`)
-  const list = usePopoverList(ident, () => {
-    active.apply()
-  })
+  const list = usePopoverList(
+    ident,
+    () => {
+      active.apply()
+    },
+    () => active.trigger.current,
+  )
 
   useEffect(() => {
     if (list.expanded) active.apply()
