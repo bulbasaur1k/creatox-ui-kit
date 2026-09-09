@@ -4,6 +4,10 @@ UI kit для React на Tailwind v4. Состояние по возможнос
 
 Собран по документу [«Web-Native Object-Centric UI»](docs/design-philosophy.ru.md). Готовых страниц и дашбордов здесь нет — примитивы, макеты и доменный слой.
 
+Все компоненты на одной странице — стори «Everything» в [витрине](https://bulbasaur1k.github.io/creatox-ui-kit/?story=everything--compact), плотность `compact`:
+
+![Все компоненты кита на одной странице](https://raw.githubusercontent.com/bulbasaur1k/creatox-ui-kit/main/docs/everything.png)
+
 ## Что делает платформа
 
 `Tree` — это `<details>`, `Dialog` — `<dialog>`, `Popover` и `Menu` — атрибут `popover`, локальные `Tabs` — radio-группа, тултип — `::after { content: attr(…) }`, рост `Textarea` — `field-sizing`, действия строк — `group-hover` и `:focus-within`. Поповеры позиционирует CSS anchor positioning.
