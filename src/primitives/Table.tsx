@@ -1,5 +1,35 @@
 import type { ComponentPropsWithoutRef, ReactNode } from 'react'
 import { cx } from '../util/cx'
+import type { Tone } from './Badge'
+
+/**
+ * Highlight fills for cells and rows. The `-surface` tokens only — the same
+ * muted greens and reds Badge and Toast already use, so a marked cell reads as
+ * part of the table rather than as something painted on top of it.
+ *
+ * A highlight is emphasis, not meaning: it says "look here", not "this
+ * failed". Whatever the colour is standing for belongs in the cell as a word —
+ * a Status or a Badge — for the same reason Status never ships colour alone.
+ */
+const TONE: Record<Tone, string> = {
+  neutral: 'bg-neutral-surface',
+  accent: 'bg-accent-subtle',
+  success: 'bg-success-surface',
+  warning: 'bg-warning-surface',
+  danger: 'bg-danger-surface',
+  info: 'bg-info-surface',
+}
+
+/* Spelled out rather than built from TONE: Tailwind extracts class names by
+   scanning source text, so a template literal would compile to nothing. */
+const ROW_TONE: Record<Tone, string> = {
+  neutral: '[&>td]:bg-neutral-surface',
+  accent: '[&>td]:bg-accent-subtle',
+  success: '[&>td]:bg-success-surface',
+  warning: '[&>td]:bg-warning-surface',
+  danger: '[&>td]:bg-danger-surface',
+  info: '[&>td]:bg-info-surface',
+}
 
 /**
  * A real <table>. Reach for it whenever users need to compare, scan, sort,
@@ -93,9 +123,11 @@ export interface TdProps extends Omit<ComponentPropsWithoutRef<'td'>, 'align'> {
   /** Machine values: ids, sizes, durations, hashes. */
   mono?: boolean
   pinned?: boolean
+  /** Marks this one value out of the column — see TONE. */
+  tone?: Tone
 }
 
-export function Td({ align, mono, pinned, className, ...rest }: TdProps) {
+export function Td({ align, mono, pinned, tone, className, ...rest }: TdProps) {
   return (
     <td
       className={cx(
@@ -103,7 +135,10 @@ export function Td({ align, mono, pinned, className, ...rest }: TdProps) {
         align === 'end' && 'text-right',
         align === 'center' && 'text-center',
         mono && 'font-mono text-meta text-fg-secondary',
+        // After `pinned`, which carries a background of its own: a pinned cell
+        // that is also marked should show the mark, not the plain surface.
         pinned && 'sticky left-0 z-[1] bg-raised',
+        tone && TONE[tone],
         className,
       )}
       {...rest}
@@ -114,13 +149,15 @@ export function Td({ align, mono, pinned, className, ...rest }: TdProps) {
 export interface TrProps extends ComponentPropsWithoutRef<'tr'> {
   selected?: boolean
   interactive?: boolean
+  /** Marks the whole row — see TONE. A `tone` on a Td still wins over it. */
+  tone?: Tone
 }
 
 /**
  * Carries the `group` marker so row actions can reveal themselves on hover or
  * focus without a handler — see RowActions.
  */
-export function Tr({ selected, interactive, className, ...rest }: TrProps) {
+export function Tr({ selected, interactive, tone, className, ...rest }: TrProps) {
   return (
     <tr
       data-selected={selected ? '' : undefined}
@@ -129,6 +166,10 @@ export function Tr({ selected, interactive, className, ...rest }: TrProps) {
       className={cx(
         'group/row last:[&>td]:border-b-0',
         'data-interactive:cursor-pointer',
+        // The row fill sits before the state rules on purpose. Hover, press and
+        // selection all carry a pseudo-class or an attribute, so they outrank a
+        // bare `[&>td]` on specificity and keep responding over a marked row.
+        tone && ROW_TONE[tone],
         'not-data-selected:hover:[&>td]:bg-hover',
         'data-interactive:not-data-selected:active:[&>td]:bg-active',
         'data-selected:[&>td]:bg-selected',
