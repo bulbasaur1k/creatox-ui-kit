@@ -4,9 +4,7 @@ UI kit для React на Tailwind v4. Состояние по возможнос
 
 Собран по документу [«Web-Native Object-Centric UI»](docs/design-philosophy.ru.md). Готовых страниц и дашбордов здесь нет — примитивы, макеты и доменный слой.
 
-Все компоненты на одной странице — стори «Everything» в [витрине](https://bulbasaur1k.github.io/creatox-ui-kit/?story=everything--compact), плотность `compact`:
-
-![Все компоненты кита на одной странице](https://raw.githubusercontent.com/bulbasaur1k/creatox-ui-kit/main/docs/everything.png)
+Витрина компонентов — [bulbasaur1k.github.io/creatox-ui-kit](https://bulbasaur1k.github.io/creatox-ui-kit/), собирается из `main`. Все компоненты на одной странице — стори [«Everything»](https://bulbasaur1k.github.io/creatox-ui-kit/?story=everything--compact).
 
 ## Что делает платформа
 
