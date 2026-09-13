@@ -1,4 +1,4 @@
-import type { ComponentPropsWithoutRef, ReactNode } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import { cx } from '../util/cx'
 
 /* Native inputs throughout. Only the painted parts are replaced, so keyboard
@@ -19,7 +19,7 @@ const CONTROL =
   'checked:border-accent checked:bg-accent ' +
   'indeterminate:border-accent indeterminate:bg-accent'
 
-export interface ChoiceProps extends Omit<ComponentPropsWithoutRef<'input'>, 'type'> {
+export interface ChoiceProps extends Omit<ComponentProps<'input'>, 'type'> {
   label?: ReactNode
   description?: ReactNode
 }
@@ -74,7 +74,7 @@ export function Radio({ label, description, className, ...rest }: ChoiceProps) {
   )
 }
 
-export interface ToggleProps extends Omit<ComponentPropsWithoutRef<'input'>, 'type'> {
+export interface ToggleProps extends Omit<ComponentProps<'input'>, 'type'> {
   label?: ReactNode
 }
 

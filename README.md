@@ -68,6 +68,59 @@ export function App() {
 
 `<Root>` оборачивает приложение один раз: типографика, контракт фокуса и именованный контейнер `page`, к которому обращаются макеты.
 
+## Таблица данных
+
+`Table`, `Th`, `Td`, `Tr` — разметка. Когда строк сотни и тысячи, а сортировку и выбор надо куда-то отдавать, есть `DataTable` — отдельная точка входа на headless-движке TanStack Table v9 и виртуализаторе TanStack Virtual:
+
+```bash
+npm i creatox-ui-kit @tanstack/react-table @tanstack/react-virtual
+```
+
+```tsx
+import { DataTable, defineColumns } from 'creatox-ui-kit/table'
+
+const col = defineColumns<Invoice>()
+
+// Один раз, на уровне модуля: движок кэширует модель по identity массива.
+const COLUMNS = col.columns([
+  col.accessor('number', { header: 'Накладная', size: 120, meta: { mono: true } }),
+  col.accessor('supplier', { header: 'Поставщик' }),
+  col.accessor('total', {
+    header: 'Сумма',
+    size: 120,
+    meta: { align: 'end', mono: true, tone: (row) => (row.total < 0 ? 'danger' : undefined) },
+    cell: ({ getValue }) => rub.format(getValue()),
+  }),
+  col.display({ id: 'actions', size: 80, cell: ({ row }) => <RowActions>…</RowActions> }),
+])
+
+<DataTable
+  rows={rows}
+  columns={COLUMNS}
+  getRowId={(row) => String(row.id)}
+  sorting={sorting}
+  onSortingChange={sortingChanged}
+  selectable
+  selection={selection}
+  onSelectionChange={selectionChanged}
+  onRowClick={rowClicked}
+  pinned={{ start: ['number'] }}
+/>
+```
+
+Пакеты движка — необязательные peer-зависимости: вместе они весят больше, чем весь остальной кит, и продукт с тремя короткими таблицами за них не платит. Основная точка входа их не импортирует.
+
+Что делает `DataTable`:
+
+- **Рисует только видимые строки.** Тело таблицы держит экран плюс запас, остальное — две строки-распорки. Таблица остаётся настоящим `<table>`: ширины колонок, липкая шапка и семантика для скринридера на месте. Без `maxHeight` прокручивается страница, с ним — сама таблица.
+- **Перерисовывает одну строку на одно изменение.** Строка сравнивается по объекту: стор отдал новый массив с одним новым объектом — React тронул одну строку. Ни `shouldCellUpdate`, ни списков зависимостей по полям.
+- **Ничего не решает за сервер.** Сортировка, фильтрация и пагинация — снаружи: таблица отдаёт `sorting` и `selection` значениями в `onSortingChange` / `onSelectionChange`, и это ровно то, что принимает событие Effector. `useUnit` с обеих сторон — и вся модель таблицы живёт в сторе. `sortMode="client"` — для короткого списка, пришедшего одним ответом.
+- Закреплённые колонки (`pinned`, им нужен `size`), выбор строк (`selectable`, `'single'`), заливка строки (`rowProps`) и ячейки (`meta.tone`), `loading` со скелетом и `empty`.
+
+Полная инструкция — [docs/data-table.ru.md](docs/data-table.ru.md): колонки, состояния, Effector, чего не делать.
+
+Стенд на 857 позициях из приёмки WMS — `demo/table.html` (`npm run dev`, затем `/table.html?count=5000`): счётчики коммитов React, число узлов в DOM и симуляция сканов штрихкода поверх Effector-модели.
+
 ## Токены
 
 Все токены — в одном блоке `@theme`. Тёмная тема переобъявляет те же переменные, поэтому `dark:` нет ни в одном компоненте, а перетемизация сводится к переопределению переменных:
@@ -231,6 +284,8 @@ applyDensity('touch') // 'compact' | 'touch'
 
 **Доменные** — `ObjectRef`, `ObjectHeader`, `Breadcrumbs`, `RelationshipList`, `ActivityStream`, `ObjectActions`
 
+**`creatox-ui-kit/table`** — `DataTable`, `defineColumns`, `dataTableFeatures`
+
 Иконок в поставке нет: `Icon` — обёртка над вашим `<svg>`.
 
 ## Шторка
@@ -297,7 +352,7 @@ CSS anchor positioning появился в Chrome 125, Safari 26 и Firefox 147.
 
 ```bash
 npm install
-npm run dev          # витрина на localhost:5180
+npm run dev          # витрина на localhost:5180, стенд таблицы — /table.html
 npm run typecheck
 npm run lint         # oxlint
 npm run format       # oxfmt

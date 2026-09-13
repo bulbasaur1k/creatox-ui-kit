@@ -1,4 +1,4 @@
-import type { ComponentPropsWithoutRef, ReactNode } from 'react'
+import type { ComponentProps, ComponentPropsWithoutRef, ReactNode } from 'react'
 import { cx } from '../util/cx'
 import type { Tone } from './Badge'
 
@@ -44,6 +44,11 @@ export interface TableProps extends ComponentPropsWithoutRef<'table'> {
   density?: 'compact' | 'default' | 'comfortable'
   caption?: ReactNode
   /**
+   * The scrolling box around the table. DataTable hands it a ref and a max
+   * height so the virtualizer can watch the element that actually scrolls.
+   */
+  wrapperProps?: ComponentProps<'div'>
+  /**
    * Draws a box around the whole table. Off by default: the sticky header
    * already marks where the table begins, and an outer border on top of ruled
    * rows states the same boundary twice.
@@ -61,15 +66,18 @@ export function Table({
   density = 'default',
   caption,
   bounded,
+  wrapperProps,
   className,
   children,
   ...rest
 }: TableProps) {
   return (
     <div
+      {...wrapperProps}
       className={cx(
         'w-full overflow-auto',
         bounded && 'rounded-md border-[length:var(--cx-hairline)] border-line bg-raised',
+        wrapperProps?.className,
       )}
     >
       <table
@@ -146,7 +154,7 @@ export function Td({ align, mono, pinned, tone, className, ...rest }: TdProps) {
   )
 }
 
-export interface TrProps extends ComponentPropsWithoutRef<'tr'> {
+export interface TrProps extends ComponentProps<'tr'> {
   selected?: boolean
   interactive?: boolean
   /** Marks the whole row — see TONE. A `tone` on a Td still wins over it. */

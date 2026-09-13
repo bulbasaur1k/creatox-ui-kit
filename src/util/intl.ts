@@ -40,6 +40,8 @@ export interface Labels {
   nextPage: string
   dismiss: string
   breadcrumb: string
+  /** Names the header checkbox of a selectable table. */
+  selectAll: string
 }
 
 export const LABELS_EN: Labels = {
@@ -61,6 +63,7 @@ export const LABELS_EN: Labels = {
   nextPage: 'Next page',
   dismiss: 'Dismiss',
   breadcrumb: 'Breadcrumb',
+  selectAll: 'Select all',
 }
 
 export const LABELS_RU: Labels = {
@@ -82,6 +85,7 @@ export const LABELS_RU: Labels = {
   nextPage: 'Следующая страница',
   dismiss: 'Закрыть',
   breadcrumb: 'Хлебные крошки',
+  selectAll: 'Выбрать все',
 }
 
 export interface IntlValue {

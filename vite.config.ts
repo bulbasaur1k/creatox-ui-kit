@@ -46,9 +46,16 @@ export default defineConfig(({ mode }) => {
       ? { outDir: resolve(root, 'dist-demo'), emptyOutDir: true }
       : {
           lib: {
-            entry: resolve(root, 'src/index.ts'),
+            entry: {
+              index: resolve(root, 'src/index.ts'),
+              // Its own entry, not a re-export from the main one: the engine
+              // and the virtualizer behind it weigh more than the rest of the
+              // kit, and a product that never imports `creatox-ui-kit/table`
+              // must not have to resolve them.
+              table: resolve(root, 'src/table/index.ts'),
+            },
             formats: ['es'],
-            fileName: () => 'index.js',
+            fileName: (_format, name) => `${name}.js`,
           },
           rollupOptions: {
             // Runtime dependencies stay external. Bundling them would ship a
@@ -63,8 +70,11 @@ export default defineConfig(({ mode }) => {
               'clsx',
               'tailwind-merge',
               'class-variance-authority',
+              '@tanstack/react-table',
+              '@tanstack/react-virtual',
             ],
             output: {
+              chunkFileNames: 'chunks/[name]-[hash].js',
               assetFileNames: (asset) =>
                 asset.names?.some((n) => n.endsWith('.css'))
                   ? 'styles.css'
