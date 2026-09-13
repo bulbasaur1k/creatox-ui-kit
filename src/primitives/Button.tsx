@@ -1,5 +1,8 @@
-import type { ComponentPropsWithoutRef, ElementType, ReactNode } from 'react'
+import type { ComponentPropsWithoutRef, ElementType, MouseEvent, ReactNode } from 'react'
 import { cva, cx } from '../util/cx'
+import { useHeldResult, useSettled } from '../util/settle'
+import { check, x } from '../icons'
+import { Icon } from './Icon'
 
 export type ButtonVariant = 'default' | 'primary' | 'quiet' | 'danger'
 export type ControlSize = 'sm' | 'md' | 'lg'
@@ -8,8 +11,22 @@ export interface ButtonProps extends ComponentPropsWithoutRef<'button'> {
   as?: ElementType
   variant?: ButtonVariant
   size?: ControlSize
-  /** Keeps the label in place so the button does not resize while working. */
-  loading?: boolean
+  /**
+   * Keeps the label in place so the button does not resize while working.
+   *
+   * The button stops taking clicks the moment this goes up, but the spinner
+   * waits: an answer inside ~150ms shows nothing, and a spinner that did
+   * appear stays ~400ms so it reads as one — see `useSettled`. Pass
+   * `'immediate'` to draw it on the first frame regardless.
+   */
+  loading?: boolean | 'immediate'
+  /**
+   * What the last action came to. A tick or a cross takes the icon's place
+   * for ~1.4s and then the button is a button again; the product only has
+   * to mark the moment. `resultSticky` keeps it — for actions done once.
+   */
+  result?: 'success' | 'error'
+  resultSticky?: boolean
   icon?: ReactNode
   iconEnd?: ReactNode
   full?: boolean
@@ -32,7 +49,10 @@ const button = cva(
     'rounded-control border font-medium no-underline',
     'cursor-pointer transition-colors duration-snap ease-snap',
     'aria-pressed:bg-selected aria-pressed:text-fg-accent',
-    'aria-busy:pointer-events-none aria-busy:cursor-progress',
+    // `data-pending` goes up with the flag and takes the clicks away at once;
+    // `aria-busy` follows when the spinner does, so a fast answer changes
+    // nothing on screen and a double-click still lands on nothing.
+    'data-pending:pointer-events-none aria-busy:cursor-progress',
   ],
   {
     variants: {
@@ -72,6 +92,8 @@ export function Button({
   variant,
   size,
   loading,
+  result,
+  resultSticky,
   icon,
   iconEnd,
   full,
@@ -79,17 +101,42 @@ export function Button({
   children,
   disabled,
   type,
+  onClick,
   ...rest
 }: ButtonProps) {
+  const pending = loading === true || loading === 'immediate'
+  const settled = useSettled(loading === true)
+  const busy = loading === 'immediate' || settled
+  const held = useHeldResult(result, { sticky: resultSticky })
+
   return (
     <Tag
       type={Tag === 'button' ? (type ?? 'button') : type}
       disabled={disabled}
-      aria-busy={loading || undefined}
+      aria-busy={busy || undefined}
+      data-pending={pending ? '' : undefined}
+      data-result={held}
       className={cx(button({ variant, size, full }), className)}
+      // Keyboard activation does not care about pointer-events, so the click
+      // is swallowed here as well while a previous one is still in flight.
+      onClick={(event: MouseEvent<HTMLButtonElement>) => {
+        if (pending) {
+          event.preventDefault()
+          return
+        }
+        onClick?.(event)
+      }}
       {...rest}
     >
-      {loading ? <Spinner /> : icon}
+      {busy ? (
+        <Spinner />
+      ) : held === 'success' ? (
+        <Icon className="text-success">{check}</Icon>
+      ) : held === 'error' ? (
+        <Icon className="text-danger">{x}</Icon>
+      ) : (
+        icon
+      )}
       {children !== undefined && (
         <span className="min-w-0 truncate group-aria-busy/button:opacity-35">
           {children}

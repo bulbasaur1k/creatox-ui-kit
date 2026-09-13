@@ -143,6 +143,73 @@ const [sorting, setSorting] = useState<SortingState>([])
 
 Выбор — отдельное состояние: удалили строку из `rows` — её id из `selection` уберите сами.
 
+## Вложенные строки
+
+Две формы, обе по желанию — без них колонки-раскрывашки нет.
+
+**Дерево** — `getSubRows` говорит, где дети:
+
+```tsx
+<DataTable
+  rows={cells}
+  getSubRows={(cell) => cell.children}
+  defaultExpanded={{ 'A': true }}
+  …
+/>
+```
+
+Дети рисуются под родителем с отступом по глубине. Колонки у них те же; что показать в ячейке ребёнка — решает `cell` колонки по `row.depth`.
+
+**Панель под строкой** — `renderDetail` рисует что угодно под раскрытой строкой:
+
+```tsx
+<DataTable renderDetail={(invoice) => <InvoiceItems id={invoice.id} />} … />
+```
+
+Панель — обычный React: запрос внутри, форма, вложенная `DataTable`. Таблица только освобождает под неё место и учитывает её высоту в прокрутке.
+
+Состояние раскрытия — `expanded` / `onExpandedChange` (`Record<string, boolean>` по `getRowId`), управляется так же, как сортировка. Без него держится внутри, `defaultExpanded` задаёт начальное.
+
+## Редактируемые ячейки
+
+В таблице нет режима редактирования, и это намеренно: редактирование — свойство ячейки, а не таблицы. Ячейка — компонент, который держит черновик у себя, а по Enter или blur отдаёт значение наружу:
+
+```tsx
+function EditableNumber({
+  value,
+  onCommit,
+}: {
+  value: number
+  onCommit: (n: number) => void
+}) {
+  const [draft, setDraft] = useState<string | null>(null)
+  const commit = () => {
+    if (draft !== null && Number(draft) !== value) onCommit(Number(draft))
+    setDraft(null)
+  }
+  return (
+    <Input
+      controlSize="sm"
+      value={draft ?? String(value)}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => e.key === 'Enter' && commit()}
+    />
+  )
+}
+
+col.accessor('quantity', {
+  cell: ({ row, getValue }) => (
+    <EditableNumber
+      value={getValue()}
+      onCommit={(qty) => quantityChanged({ id: row.original.id, qty })}
+    />
+  ),
+})
+```
+
+Таблица гарантирует одно: строка, объект которой не менялся, не перемонтируется — черновик в её ячейке переживает обновления соседних строк. Когда `quantityChanged` вернётся новым объектом строки, перерисуется ровно она.
+
 ## Закреплённые колонки
 
 ```tsx
@@ -166,7 +233,7 @@ pinned={{ start: ['number'], end: ['actions'] }}
 
 ## Состояния
 
-- `loading` без строк — пять строк скелета; с строками — тело приглушается, таблица помечается `aria-busy`.
+- `loading` без строк — пять строк скелета; со строками — тело приглушается, таблица помечается `aria-busy`. Индикатор появляется не раньше 150 мс и держится не меньше 400 мс (`useSettled`): ответ за 80 мс не мигает ничем, а показавшийся скелет не исчезает на третьем кадре. Передавайте сырой `$pending` — задержка уже внутри.
 - `empty` — текст или элемент вместо строк; без него — «Ничего не найдено» на языке `<Root>`.
 - `density`, `bounded`, `caption` — как у `Table`.
 

@@ -204,8 +204,8 @@ export function Input({
         CONTROL_SIZE[size],
         // Relative, not a fixed step: a monospace face runs optically larger
         // at the same size, but pinning it to 12px took the control out of
-        // the row its neighbours are in.
-        mono && 'font-mono text-[0.95em]',
+        // the row its neighbours are in. See `field-mono` in theme.css.
+        mono && 'field-mono',
         className,
       )}
       {...rest}
@@ -238,8 +238,8 @@ export function Textarea({ controlSize, mono, className, ...rest }: TextareaProp
         CONTROL_TEXT[size],
         // Relative, not a fixed step: a monospace face runs optically larger
         // at the same size, but pinning it to 12px took the control out of
-        // the row its neighbours are in.
-        mono && 'font-mono text-[0.95em]',
+        // the row its neighbours are in. See `field-mono` in theme.css.
+        mono && 'field-mono',
         className,
       )}
       {...rest}

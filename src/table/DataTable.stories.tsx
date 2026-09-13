@@ -1,6 +1,7 @@
 import type { Story } from '@ladle/react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { DataTable, defineColumns, type SortingState } from './index'
+import { Input } from '../primitives/Field'
 import { Status } from '../primitives/Status'
 import { Text } from '../primitives/Text'
 import { Stack } from '../layout/Stack'
@@ -132,3 +133,155 @@ export const States: Story = () => (
     </Stack>
   </Stack>
 )
+
+/* ── Nested rows ─────────────────────────────────────────────────────────── */
+
+interface Cell {
+  id: string
+  name: string
+  items: number
+  children?: Cell[]
+}
+
+const CELLS: Cell[] = [
+  {
+    id: 'A',
+    name: 'Building A',
+    items: 1240,
+    children: [
+      {
+        id: 'A-1',
+        name: 'Row 1',
+        items: 800,
+        children: [{ id: 'A-1-3', name: 'Shelf 3', items: 120 }],
+      },
+      { id: 'A-2', name: 'Row 2', items: 440 },
+    ],
+  },
+  {
+    id: 'B',
+    name: 'Building B',
+    items: 310,
+    children: [{ id: 'B-1', name: 'Row 1', items: 310 }],
+  },
+]
+
+const cell = defineColumns<Cell>()
+const CELL_COLUMNS = cell.columns([
+  cell.accessor('name', { header: 'Location' }),
+  cell.accessor('items', {
+    header: 'Items',
+    size: 100,
+    meta: { align: 'end', mono: true },
+  }),
+])
+
+/**
+ * A tree: `getSubRows` says where the children are, the expander column
+ * appears on its own, and the indent says the rest. Expansion state is a
+ * controlled prop like sorting — an Effector store can own it.
+ */
+export const Tree: Story = () => (
+  <DataTable
+    rows={CELLS}
+    columns={CELL_COLUMNS}
+    getRowId={(c) => c.id}
+    getSubRows={(c) => c.children}
+    defaultExpanded={{ A: true }}
+    bounded
+    virtual={false}
+  />
+)
+
+/**
+ * A detail panel under a row — for what does not fit in the columns. The
+ * panel is whatever the product draws; the table only makes room for it.
+ */
+export const DetailRows: Story = () => (
+  <DataTable
+    rows={ROWS.slice(0, 6)}
+    columns={COLUMNS}
+    getRowId={getRowId}
+    renderDetail={(d) => (
+      <Text variant="meta" tone="muted">
+        {d.id} was triggered by {d.actor} and ran for {d.seconds}s. Logs, diff and the
+        rollback control would go here.
+      </Text>
+    )}
+    bounded
+  />
+)
+
+/* ── Editable cells ──────────────────────────────────────────────────────── */
+
+/**
+ * Editing is the cell's business, not the table's. A cell component holds
+ * its draft locally, commits on Enter or blur, and the row is drawn again
+ * only when the committed value comes back through the rows. The table
+ * guarantees one thing: a row whose object did not change keeps its cells
+ * mounted, so the draft survives every other row's update.
+ */
+function EditableNumber({
+  value,
+  onCommit,
+}: {
+  value: number
+  onCommit: (next: number) => void
+}) {
+  const [draft, setDraft] = useState<string | null>(null)
+  const commit = () => {
+    if (draft !== null && draft !== '' && Number(draft) !== value) onCommit(Number(draft))
+    setDraft(null)
+  }
+  return (
+    <Input
+      controlSize="sm"
+      type="number"
+      mono
+      className="w-24 text-right"
+      value={draft ?? String(value)}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') commit()
+        if (e.key === 'Escape') setDraft(null)
+      }}
+    />
+  )
+}
+
+export const EditableCells: Story = () => {
+  const [rows, setRows] = useState(() => ROWS.slice(0, 5))
+  const columns = useMemo(
+    () =>
+      col.columns([
+        col.accessor('id', { header: 'Deployment', size: 120, meta: { mono: true } }),
+        col.accessor('actor', { header: 'Triggered by' }),
+        col.accessor('seconds', {
+          header: 'Duration, s',
+          size: 140,
+          meta: { align: 'end' },
+          cell: ({ row, getValue }) => (
+            <EditableNumber
+              value={getValue()}
+              onCommit={(seconds) =>
+                setRows((list) =>
+                  list.map((d) => (d.id === row.original.id ? { ...d, seconds } : d)),
+                )
+              }
+            />
+          ),
+        }),
+      ]),
+    [],
+  )
+  return (
+    <DataTable
+      rows={rows}
+      columns={columns}
+      getRowId={getRowId}
+      bounded
+      virtual={false}
+    />
+  )
+}

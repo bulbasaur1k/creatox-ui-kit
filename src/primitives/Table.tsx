@@ -75,7 +75,9 @@ export function Table({
     <div
       {...wrapperProps}
       className={cx(
-        'w-full overflow-auto',
+        // A wide table scrolls sideways inside its box; the contained overscroll
+        // keeps the end of that scroll from bouncing the page along with it.
+        'w-full overflow-auto overscroll-x-contain',
         bounded && 'rounded-md border-[length:var(--cx-hairline)] border-line bg-raised',
         wrapperProps?.className,
       )}

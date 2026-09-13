@@ -2,7 +2,9 @@ import {
   columnPinningFeature,
   columnSizingFeature,
   createColumnHelper,
+  createExpandedRowModel,
   createSortedRowModel,
+  rowExpandingFeature,
   rowSelectionFeature,
   rowSortingFeature,
   sortFn_alphanumeric,
@@ -23,6 +25,9 @@ import type { Tone } from '../primitives/Badge'
    purpose — those run on the server in every product this kit serves, and a
    client-side copy of them would only sort the page it can see.
 
+   Expanding is here for nested rows — a tree of sub-rows, or a detail panel
+   under an open row — and costs a column only when a table asks for it.
+
    Sorting is registered with a client row model all the same, because a
    table of a few hundred rows that arrived in one response has no server to
    ask. The default is still `server`: see DataTable's `sortMode`.          */
@@ -32,6 +37,8 @@ export const dataTableFeatures = tableFeatures({
   sortedRowModel: createSortedRowModel(),
   sortFns: { alphanumeric: sortFn_alphanumeric, basic: sortFn_basic, text: sortFn_text },
   rowSelectionFeature,
+  rowExpandingFeature,
+  expandedRowModel: createExpandedRowModel(),
   columnSizingFeature,
   columnPinningFeature,
 })

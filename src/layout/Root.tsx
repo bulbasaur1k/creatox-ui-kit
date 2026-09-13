@@ -1,4 +1,4 @@
-import { useMemo, type ComponentPropsWithoutRef } from 'react'
+import { useEffect, useMemo, type ComponentPropsWithoutRef } from 'react'
 import { cx } from '../util/cx'
 import { IntlContext, LABELS_EN, type Labels } from '../util/intl'
 
@@ -50,6 +50,15 @@ export function Root({ theme, density, locale, labels, className, ...rest }: Roo
     () => ({ locale, labels: labels ? { ...LABELS_EN, ...labels } : LABELS_EN }),
     [locale, labels],
   )
+
+  // iOS Safari paints `:active` on a touch only if something on the page
+  // listens for touches. Nothing here needs the event; the listener exists
+  // so that every pressed state the kit draws is drawn under a finger too.
+  useEffect(() => {
+    const noop = () => {}
+    document.addEventListener('touchstart', noop, { passive: true })
+    return () => document.removeEventListener('touchstart', noop)
+  }, [])
 
   return (
     <IntlContext.Provider value={intl}>

@@ -12,6 +12,33 @@ const root = import.meta.dirname
  * own Tailwind import it so the kit's `@theme` block participates in their
  * build and both sides end up on one token set.
  */
+/**
+ * Only in demo mode: receives the interaction timings `demo/perf.ts` posts
+ * from a phone on the same network and prints them, so the numbers taken on
+ * the device land in the terminal next to the developer.
+ */
+function perfLog(): Plugin {
+  return {
+    name: 'creatox-perf-log',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use('/__perf', (req, res) => {
+        let body = ''
+        req.on('data', (chunk: Buffer) => (body += chunk))
+        req.on('end', () => {
+          try {
+            for (const line of JSON.parse(body) as string[]) console.log(`[perf] ${line}`)
+          } catch {
+            console.log(`[perf] unreadable: ${body.slice(0, 80)}`)
+          }
+          res.statusCode = 204
+          res.end()
+        })
+      })
+    },
+  }
+}
+
 function shipThemeSource(): Plugin {
   return {
     name: 'creatox-ship-theme-source',
@@ -35,7 +62,7 @@ export default defineConfig(({ mode }) => {
       react(),
       tailwind(),
       ...(isDemo
-        ? []
+        ? [perfLog()]
         : [
             // Stories document the kit; they are not part of its API.
             dts({ include: ['src'], exclude: ['src/**/*.stories.tsx'] }),
@@ -43,7 +70,20 @@ export default defineConfig(({ mode }) => {
           ]),
     ],
     build: isDemo
-      ? { outDir: resolve(root, 'dist-demo'), emptyOutDir: true }
+      ? {
+          outDir: resolve(root, 'dist-demo'),
+          emptyOutDir: true,
+          // Every page of the workbench, not only index.html: the table stand
+          // and the dropdown stand are entries of their own, and the Pages
+          // deploy ships all three under /demo/.
+          rollupOptions: {
+            input: {
+              index: resolve(root, 'demo/index.html'),
+              table: resolve(root, 'demo/table.html'),
+              stress: resolve(root, 'demo/stress.html'),
+            },
+          },
+        }
       : {
           lib: {
             entry: {

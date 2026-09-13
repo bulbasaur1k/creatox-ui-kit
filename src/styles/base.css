@@ -21,6 +21,29 @@
        `@max-[68rem]/page:…` in any component below this root. */
     container: page / inline-size;
 
+    /* Touch. `manipulation` tells the browser a tap on a control is a tap,
+       not the first half of a double-tap to zoom, so Safari does not sit on
+       the click waiting for a second one. The highlight goes because every
+       control here draws its own pressed state; the grey flash on top of it
+       read as the control hesitating. */
+    :is(
+      a,
+      button,
+      input,
+      label,
+      select,
+      textarea,
+      summary,
+      [role='button'],
+      [role='option'],
+      [role='tab'],
+      [role='row'],
+      [role='treeitem']
+    ) {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+
     scrollbar-width: thin;
     scrollbar-color: var(--color-line-strong) transparent;
   }

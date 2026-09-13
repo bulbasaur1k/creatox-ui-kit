@@ -2,6 +2,7 @@ import { Profiler, StrictMode, useEffect, useMemo, useRef, useState } from 'reac
 import { createRoot } from 'react-dom/client'
 import { useUnit } from 'effector-react'
 import '../src/styles/index.css'
+import './perf'
 import {
   Button,
   Field,

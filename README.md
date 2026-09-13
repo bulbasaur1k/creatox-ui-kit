@@ -4,7 +4,7 @@ UI kit для React на Tailwind v4. Состояние по возможнос
 
 Собран по документу [«Web-Native Object-Centric UI»](docs/design-philosophy.ru.md). Готовых страниц и дашбордов здесь нет — примитивы, макеты и доменный слой.
 
-Витрина компонентов — [bulbasaur1k.github.io/creatox-ui-kit](https://bulbasaur1k.github.io/creatox-ui-kit/), собирается из `main`. Все компоненты на одной странице — стори [«Everything»](https://bulbasaur1k.github.io/creatox-ui-kit/?story=everything--compact).
+Витрина компонентов — [bulbasaur1k.github.io/creatox-ui-kit](https://bulbasaur1k.github.io/creatox-ui-kit/), собирается из `main`. Все компоненты на одной странице — стори [«Everything»](https://bulbasaur1k.github.io/creatox-ui-kit/?story=everything--compact). Живые страницы: [рабочее место](https://bulbasaur1k.github.io/creatox-ui-kit/demo/) и [стенд таблицы](https://bulbasaur1k.github.io/creatox-ui-kit/demo/table.html) на 857 позициях — с телефона тоже.
 
 ## Что делает платформа
 
@@ -242,6 +242,30 @@ applyDensity('touch') // 'compact' | 'touch'
 
 Все интерактивные элементы несут `active:`. На телефоне `hover` не существует, и без этого нажатие не видно, пока не приедет новое состояние.
 
+## Ожидание и результат
+
+Запрос, который отвечает за восемьдесят миллисекунд, не должен показывать спиннер: он появится и исчезнет за три кадра и прочитается как сбой. А спиннер, который всё-таки показался, должен постоять, чтобы его успели увидеть. Поэтому сырой `pending` в ките проходит через две задержки — `useSettled(pending)`: индикатор появляется не раньше 150 мс и держится не меньше 400 мс. `Button loading` и `DataTable loading` уже так работают; хук экспортируется, чтобы так же вёл себя любой свой индикатор.
+
+Тайминги — свойство восприятия, поэтому они здесь, а не в моделях. Что считать ожиданием — `mutation.$pending`, `query.$pending`, свой стор — знает продукт и отдаёт как есть.
+
+Кнопка при этом перестаёт принимать нажатия сразу, а не когда появится спиннер: второй клик по «Сохранить» за первые сто миллисекунд попадает в никуда. А что действие состоялось, говорит `result="success"` — галочка на месте иконки на 1,4 с, потом кнопка снова кнопка. Для действий, которые не повторяют, — `resultSticky`.
+
+```tsx
+const { pending, result } = useUnit({ pending: saveFx.pending, result: $saveResult })
+
+<Button variant="primary" loading={pending} result={result} onClick={save}>Сохранить</Button>
+```
+
+```ts
+// модель: отметить момент, не мерить его
+export const $saveResult = createStore<'success' | 'error' | null>(null)
+  .on(saveFx, () => null)
+  .on(saveFx.done, () => 'success')
+  .on(saveFx.fail, () => 'error')
+```
+
+Скелет — для контента с раскладкой, спиннер — для действия, `Alert` — для состояния, которое держится, пока не изменится ситуация; тост — для события, которое уже прошло.
+
 ## Чего кит не обещает
 
 `Tree` — это вложенные `<details>`, а не `role="tree"`. Роль дерева требует стрелок по узлам, сворачивания влево-вправо, перехода по первым буквам и уровня у каждого узла; объявить её и не реализовать хуже, чем не объявлять. `<details>` озвучивается правильно и работает с поиском по странице.
@@ -280,7 +304,7 @@ applyDensity('touch') // 'compact' | 'touch'
 
 **Layout** — `Root`, `Stack`, `Inline`, `Grow`, `Cluster`, `Grid`, `Split`, `Sidebar`, `Section`, `Container`, `ScrollArea`
 
-**Примитивы** — `Text`, `Code`, `Link`, `Icon`, `Button`, `IconButton`, `Field`, `Input`, `Calendar`, `DatePicker`, `DateRangePicker`, `TimePicker`, `Textarea`, `Select`, `Combobox`, `InputGroup`, `PinInput`, `Checkbox`, `Radio`, `Toggle`, `SegmentedControl`, `Slider`, `Progress`, `Badge`, `Status`, `Avatar`, `Separator`, `Skeleton`, `EmptyState`, `Popover`, `Menu`, `MenuItem`, `Dialog`, `Sheet`, `Toaster`, `Panel`, `Table`, `Th`, `Td`, `Tr`, `RowActions`, `SortButton`, `List`, `ListItem`, `Pagination`, `Tree`, `TreeNode`, `TreeLeaf`, `TabNav`, `Tab`, `Tabs`, `KeyValue`
+**Примитивы** — `Text`, `Code`, `Link`, `Icon`, `Button`, `IconButton`, `Field`, `Input`, `Calendar`, `DatePicker`, `DateRangePicker`, `TimePicker`, `Textarea`, `Select`, `Combobox`, `InputGroup`, `PinInput`, `Checkbox`, `Radio`, `Toggle`, `SegmentedControl`, `Slider`, `Progress`, `Badge`, `Status`, `Avatar`, `Separator`, `Skeleton`, `EmptyState`, `Popover`, `Menu`, `MenuItem`, `Dialog`, `Sheet`, `Toaster`, `Alert`, `Panel`, `Table`, `Th`, `Td`, `Tr`, `RowActions`, `SortButton`, `List`, `ListItem`, `Pagination`, `Tree`, `TreeNode`, `TreeLeaf`, `TreeSelect`, `Upload`, `UploadList`, `UploadItem`, `TabNav`, `Tab`, `Tabs`, `KeyValue`
 
 **Доменные** — `ObjectRef`, `ObjectHeader`, `Breadcrumbs`, `RelationshipList`, `ActivityStream`, `ObjectActions`
 

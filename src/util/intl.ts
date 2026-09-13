@@ -42,6 +42,12 @@ export interface Labels {
   breadcrumb: string
   /** Names the header checkbox of a selectable table. */
   selectAll: string
+  expandRow: string
+  collapseRow: string
+  uploadPrompt: ReactNode
+  uploadDone: string
+  uploadFailed: ReactNode
+  remove: string
 }
 
 export const LABELS_EN: Labels = {
@@ -64,6 +70,12 @@ export const LABELS_EN: Labels = {
   dismiss: 'Dismiss',
   breadcrumb: 'Breadcrumb',
   selectAll: 'Select all',
+  expandRow: 'Expand',
+  collapseRow: 'Collapse',
+  uploadPrompt: 'Choose files or drop them here',
+  uploadDone: 'Uploaded',
+  uploadFailed: 'Upload failed',
+  remove: 'Remove',
 }
 
 export const LABELS_RU: Labels = {
@@ -86,6 +98,12 @@ export const LABELS_RU: Labels = {
   dismiss: 'Закрыть',
   breadcrumb: 'Хлебные крошки',
   selectAll: 'Выбрать все',
+  expandRow: 'Раскрыть',
+  collapseRow: 'Свернуть',
+  uploadPrompt: 'Выберите файлы или перетащите сюда',
+  uploadDone: 'Загружено',
+  uploadFailed: 'Не удалось загрузить',
+  remove: 'Удалить',
 }
 
 export interface IntlValue {

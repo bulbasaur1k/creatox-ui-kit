@@ -130,7 +130,14 @@
      Open/close, light dismiss, Escape and top-layer stacking all come from
      the platform via `popovertarget`. No state, no effect, no listener.    */
   .cx-popover {
-    position: absolute;
+    /* `fixed`, not `absolute`: in the top layer an absolute box is placed
+       against the initial containing block — the viewport-sized rectangle at
+       the top of the document — so once the page has scrolled, the overflow
+       check behind `position-try-fallbacks` compares against a rectangle
+       nobody is looking at, and a list under a field at the bottom of the
+       screen never flips upward. A fixed box is measured against the visible
+       viewport, which is the only thing the user can see. */
+    position: fixed;
     inset: auto;
     margin: 0;
 
@@ -150,6 +157,20 @@
   .cx-popover:popover-open {
     opacity: 1;
     translate: 0 0;
+  }
+
+  /* Engines without `overlay` — Safari, Firefox — take a closing popover out
+     of the top layer on the first frame; the fade would then play as an
+     ordinary fixed box, under whatever sits above it and re-anchored from
+     scratch, which on a phone showed as a blink that jumped below the field.
+     Better no exit than that exit: the box goes on the next frame, the way
+     the platform's own pickers do, and only the opening still animates. */
+  @supports not (overlay: auto) {
+    .cx-popover {
+      transition:
+        opacity var(--duration-snap) var(--ease-snap),
+        translate var(--duration-snap) var(--ease-snap);
+    }
   }
 
   /* The opening frame. Without this the popover would appear at its final

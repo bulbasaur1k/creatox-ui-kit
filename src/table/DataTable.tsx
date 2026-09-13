@@ -15,6 +15,7 @@ import {
   flexRender,
   useTable,
   type Column,
+  type ExpandedState,
   type Row,
   type RowData,
   type RowSelectionState,
@@ -29,7 +30,10 @@ import {
   type Virtualizer,
 } from '@tanstack/react-virtual'
 import { cx } from '../util/cx'
-import { useLabels } from '../util/intl'
+import { useLabels, type Labels } from '../util/intl'
+import { useSettled } from '../util/settle'
+import { chevronRight } from '../icons'
+import { Icon } from '../primitives/Icon'
 import { Checkbox } from '../primitives/Choice'
 import { EmptyState, Skeleton } from '../primitives/Feedback'
 import { SortButton, Table, Td, Th, Tr, type TableProps } from '../primitives/Table'
@@ -41,7 +45,7 @@ import {
   type DataTableFeatures,
 } from './features'
 
-export type { SortingState, RowSelectionState }
+export type { SortingState, RowSelectionState, ExpandedState }
 
 /* ── DataTable ─────────────────────────────────────────────────────────────
    Every row is a component, and every visible row is the only kind there is.
@@ -100,6 +104,15 @@ export interface DataTableProps<T extends RowData> extends Omit<
   defaultSelection?: RowSelectionState
   onSelectionChange?: (selection: RowSelectionState) => void
 
+  /* Nested rows. Either a tree — `getSubRows` returns the children of a row
+     — or a detail panel drawn under an open row by `renderDetail`. Both are
+     opt-in: a table that wants neither has no expander column. */
+  getSubRows?: (row: T) => readonly T[] | undefined
+  renderDetail?: (row: T) => ReactNode
+  expanded?: ExpandedState
+  defaultExpanded?: ExpandedState
+  onExpandedChange?: (expanded: ExpandedState) => void
+
   /** Columns that stay put while the rest scrolls sideways. They need a `size`. */
   pinned?: { start?: readonly string[]; end?: readonly string[] }
 
@@ -123,12 +136,17 @@ export interface DataTableProps<T extends RowData> extends Omit<
   /** Rows drawn beyond the visible edge, so a scroll does not show blank. */
   overscan?: number
 
+  /**
+   * Shown late and held once shown — see `useSettled`: a table that answers
+   * inside ~150ms never dims, one that took longer stays dimmed ~400ms.
+   */
   loading?: boolean
   empty?: ReactNode
 }
 
 const NO_SORTING: SortingState = []
 const NO_SELECTION: RowSelectionState = {}
+const NO_EXPANDED: ExpandedState = {}
 const NO_PINNING = { start: [] as string[], end: [] as string[] }
 /* The table controls its own state through props, so the hook has nothing
    to subscribe to: a state change reaches it as a prop, not as a store
@@ -142,6 +160,7 @@ const ESTIMATE: Record<NonNullable<TableProps['density']>, number> = {
 }
 
 const SELECT_COLUMN = '__select'
+const EXPAND_COLUMN = '__expand'
 
 /**
  * Value or updater, the way the engine calls its change handlers, resolved
@@ -189,6 +208,11 @@ export function DataTable<T extends RowData>({
   selection: selectionProp,
   defaultSelection = NO_SELECTION,
   onSelectionChange,
+  getSubRows,
+  renderDetail,
+  expanded: expandedProp,
+  defaultExpanded = NO_EXPANDED,
+  onExpandedChange,
   pinned,
   onRowClick,
   rowProps,
@@ -213,6 +237,13 @@ export function DataTable<T extends RowData>({
     defaultSelection,
     onSelectionChange,
   )
+  const expandable = getSubRows !== undefined || renderDetail !== undefined
+  const [expanded, setExpanded] = useControllable(
+    expandedProp,
+    defaultExpanded,
+    onExpandedChange,
+  )
+  const busy = useSettled(loading)
 
   /* Keyed on the column ids, not on the object: `pinned={{ start: ['id'] }}`
      is a new object every render of the parent, and a new pinning state is
@@ -222,13 +253,18 @@ export function DataTable<T extends RowData>({
   const columnPinning = useMemo(() => {
     const start = pinStart ? pinStart.split('\0') : []
     const end = pinEnd ? pinEnd.split('\0') : []
+    if (expandable) start.unshift(EXPAND_COLUMN)
     if (selectable) start.unshift(SELECT_COLUMN)
     return start.length === 0 && end.length === 0 ? NO_PINNING : { start, end }
-  }, [pinStart, pinEnd, selectable])
+  }, [pinStart, pinEnd, selectable, expandable])
 
   const allColumns = useMemo<readonly DataTableColumn<T>[]>(
-    () => (selectable ? [selectColumn as DataTableColumn<T>, ...columns] : columns),
-    [columns, selectable],
+    () => [
+      ...(selectable ? [selectColumn as DataTableColumn<T>] : []),
+      ...(expandable ? [expandColumn as DataTableColumn<T>] : []),
+      ...columns,
+    ],
+    [columns, selectable, expandable],
   )
 
   const table = useTable<DataTableFeatures<T>, T, null>(
@@ -237,9 +273,14 @@ export function DataTable<T extends RowData>({
       data: rows,
       columns: allColumns,
       getRowId,
-      state: { sorting, rowSelection: selection, columnPinning },
+      getSubRows: getSubRows ? (row) => getSubRows(row) : undefined,
+      state: { sorting, rowSelection: selection, columnPinning, expanded },
       onSortingChange: setSorting,
       onRowSelectionChange: setSelection,
+      onExpandedChange: setExpanded,
+      enableExpanding: expandable,
+      // A detail panel opens on any row; a tree opens on rows with children.
+      getRowCanExpand: renderDetail ? () => true : undefined,
       manualSorting: sortMode === 'server',
       enableMultiSort: multiSort,
       enableSortingRemoval: true,
@@ -297,18 +338,27 @@ export function DataTable<T extends RowData>({
         interactive={extra?.interactive}
         className={extra?.className}
         measure={measure}
+        expandable={expandable}
+        expanded={expandable && row.getIsExpanded()}
+        depth={row.depth}
+        detail={renderDetail}
+        labels={labels}
       />
     )
   }
 
   const colSpan = ordered.length
-  const showSkeleton = loading && modelRows.length === 0
+  // An empty table that is loading shows the skeleton once the wait has
+  // settled, and nothing at all before that: a "nothing found" that flashes
+  // for a hundred milliseconds ahead of the rows is a lie told briefly.
+  const showSkeleton = busy && modelRows.length === 0
+  const showBlank = loading && !busy && modelRows.length === 0
   const showEmpty = !loading && modelRows.length === 0
 
   return (
     <Table
       density={density}
-      aria-busy={loading || undefined}
+      aria-busy={busy || undefined}
       aria-rowcount={modelRows.length}
       aria-multiselectable={selectable === true || undefined}
       wrapperProps={{
@@ -401,6 +451,8 @@ export function DataTable<T extends RowData>({
             </tr>
           ))}
         </tbody>
+      ) : showBlank ? (
+        <tbody />
       ) : showEmpty ? (
         <tbody>
           <tr>
@@ -414,7 +466,7 @@ export function DataTable<T extends RowData>({
           </tr>
         </tbody>
       ) : !virtual ? (
-        <tbody className={cx(loading && 'opacity-60 transition-opacity duration-snap')}>
+        <tbody className={cx(busy && 'opacity-60 transition-opacity duration-snap')}>
           {modelRows.map((row, index) => renderRow(row, index))}
         </tbody>
       ) : maxHeight ? (
@@ -424,7 +476,7 @@ export function DataTable<T extends RowData>({
           estimate={estimate}
           overscan={overscan}
           scrollRef={wrapperRef}
-          loading={loading}
+          loading={busy}
           renderRow={renderRow}
         />
       ) : (
@@ -433,7 +485,7 @@ export function DataTable<T extends RowData>({
           colSpan={colSpan}
           estimate={estimate}
           overscan={overscan}
-          loading={loading}
+          loading={busy}
           renderRow={renderRow}
         />
       )}
@@ -462,9 +514,25 @@ function measureLazily<S extends Element | Window>(
   entry: ResizeObserverEntry | undefined,
   instance: Virtualizer<S, HTMLTableRowElement>,
 ): number {
-  return entry
-    ? measureElement(node, entry, instance)
-    : instance.options.estimateSize(instance.indexFromElement(node))
+  const index = instance.indexFromElement(node)
+  let size: number
+  if (entry) {
+    size = measureElement(node, entry, instance)
+  } else if (instance.itemSizeCache.has(instance.options.getItemKey(index))) {
+    // Attached again after a first measurement: a detail panel opened or
+    // closed under the row, and the observer, which watches the row alone,
+    // would not say. One forced read, on the one row that changed.
+    size = node.offsetHeight
+  } else {
+    size = instance.options.estimateSize(index)
+  }
+  // The detail panel is a second <tr>: it belongs to the same item as far as
+  // the scroll geometry is concerned, so its height counts here.
+  const detail = node.nextElementSibling
+  if (detail instanceof HTMLElement && detail.hasAttribute('data-detail')) {
+    size += detail.offsetHeight
+  }
+  return size
 }
 
 interface BodyProps<T extends RowData> {
@@ -616,6 +684,11 @@ interface BodyRowProps<T extends RowData> {
   interactive?: boolean
   className?: string
   measure?: Measure
+  expandable: boolean
+  expanded: boolean
+  depth: number
+  detail?: (row: T) => ReactNode
+  labels: Labels
 }
 
 /**
@@ -635,7 +708,12 @@ const BodyRow = memo(BodyRowImpl, (a, b) => {
     a.tone === b.tone &&
     a.interactive === b.interactive &&
     a.className === b.className &&
-    a.measure === b.measure
+    a.measure === b.measure &&
+    a.expandable === b.expandable &&
+    a.expanded === b.expanded &&
+    a.depth === b.depth &&
+    a.detail === b.detail &&
+    a.labels === b.labels
   )
 }) as typeof BodyRowImpl
 
@@ -650,54 +728,115 @@ function BodyRowImpl<T extends RowData>({
   interactive,
   className,
   measure,
+  expandable,
+  expanded,
+  depth,
+  detail,
+  labels,
 }: BodyRowProps<T>) {
   const cells = row.getAllCellsByColumnId()
+  // A new callback whenever the panel toggles, so React attaches the ref
+  // again and the virtualizer measures the row with or without it.
+  const measureRow = useMemo(
+    () => (measure ? (node: HTMLTableRowElement | null) => measure(node) : undefined),
+    [measure, expanded],
+  )
+  const canExpand = expandable && row.getCanExpand()
   return (
-    <Tr
-      ref={measure}
-      data-index={index}
-      aria-rowindex={index + 1}
-      selected={selectable ? selected : undefined}
-      interactive={interactive ?? onClick !== undefined}
-      tone={tone}
-      className={className}
-      onClick={onClick ? (event) => onClick(row.original, event) : undefined}
-    >
-      {columns.map((column) => {
-        const cell = cells[column.id]!
-        const meta = column.columnDef.meta as DataTableColumnMeta<T> | undefined
-        if (column.id === SELECT_COLUMN) {
+    <>
+      <Tr
+        ref={measureRow}
+        data-index={index}
+        aria-rowindex={index + 1}
+        selected={selectable ? selected : undefined}
+        interactive={interactive ?? onClick !== undefined}
+        tone={tone}
+        className={className}
+        onClick={onClick ? (event) => onClick(row.original, event) : undefined}
+      >
+        {columns.map((column) => {
+          const cell = cells[column.id]!
+          const meta = column.columnDef.meta as DataTableColumnMeta<T> | undefined
+          if (column.id === SELECT_COLUMN) {
+            return (
+              <Td
+                key={column.id}
+                align="center"
+                className={cx(pinnedClass(column, 'z-[1]'), 'w-0')}
+                style={pinnedStyle(column)}
+                onClick={stop}
+              >
+                <Checkbox
+                  className="items-center align-middle"
+                  checked={selected}
+                  onChange={row.getToggleSelectedHandler()}
+                  aria-label={String(row.id)}
+                />
+              </Td>
+            )
+          }
+          if (column.id === EXPAND_COLUMN) {
+            return (
+              <Td
+                key={column.id}
+                className={cx(pinnedClass(column, 'z-[1]'), 'w-0 py-0')}
+                // Children sit one step in from their parent: the tree reads
+                // from the indent alone, before anyone looks at a chevron.
+                style={{
+                  ...pinnedStyle(column),
+                  paddingInlineStart: `${0.5 + depth}rem`,
+                }}
+                onClick={stop}
+              >
+                {canExpand && (
+                  <button
+                    type="button"
+                    aria-expanded={expanded}
+                    aria-label={expanded ? labels.collapseRow : labels.expandRow}
+                    onClick={row.getToggleExpandedHandler()}
+                    className={cx(
+                      'inline-flex size-6 cursor-pointer items-center justify-center rounded-control',
+                      'border-0 bg-transparent p-0 text-fg-muted hover:bg-hover hover:text-fg',
+                    )}
+                  >
+                    <Icon
+                      className={cx(
+                        'transition-transform duration-snap ease-snap',
+                        expanded && 'rotate-90',
+                      )}
+                    >
+                      {chevronRight}
+                    </Icon>
+                  </button>
+                )}
+              </Td>
+            )
+          }
           return (
             <Td
               key={column.id}
-              align="center"
-              className={cx(pinnedClass(column, 'z-[1]'), 'w-0')}
+              align={meta?.align}
+              mono={meta?.mono}
+              tone={meta?.tone?.(row.original)}
+              className={cx(pinnedClass(column, 'z-[1]'), meta?.cellClassName)}
               style={pinnedStyle(column)}
-              onClick={stop}
             >
-              <Checkbox
-                className="items-center align-middle"
-                checked={selected}
-                onChange={row.getToggleSelectedHandler()}
-                aria-label={String(row.id)}
-              />
+              {flexRender(column.columnDef.cell, cell.getContext())}
             </Td>
           )
-        }
-        return (
-          <Td
-            key={column.id}
-            align={meta?.align}
-            mono={meta?.mono}
-            tone={meta?.tone?.(row.original)}
-            className={cx(pinnedClass(column, 'z-[1]'), meta?.cellClassName)}
-            style={pinnedStyle(column)}
+        })}
+      </Tr>
+      {expanded && detail !== undefined && (
+        <tr data-detail="">
+          <td
+            colSpan={columns.length}
+            className="border-b-[length:var(--cx-hairline)] border-line bg-subtle px-3 py-3"
           >
-            {flexRender(column.columnDef.cell, cell.getContext())}
-          </Td>
-        )
-      })}
-    </Tr>
+            {detail(row.original)}
+          </td>
+        </tr>
+      )}
+    </>
   )
 }
 
@@ -710,6 +849,13 @@ function stop(event: MouseEvent) {
 
 const selectColumn: DataTableColumn<object> = {
   id: SELECT_COLUMN,
+  header: '',
+  size: 36,
+  enableSorting: false,
+}
+
+const expandColumn: DataTableColumn<object> = {
+  id: EXPAND_COLUMN,
   header: '',
   size: 36,
   enableSorting: false,

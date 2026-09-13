@@ -48,6 +48,11 @@ export interface ListboxOption<T extends string = string> {
   heading?: boolean
   /** What typeahead and filtering match on. Defaults to a string label. */
   search?: string
+  /**
+   * What the closed control shows for this option, when the row in the list
+   * draws more than a name — an indent, a fold control, a swatch.
+   */
+  display?: ReactNode
 }
 
 const CHEVRON = (
@@ -760,7 +765,9 @@ export function Select({
         {...rest}
       >
         <span className="min-w-0 truncate">
-          {selected ? selected.label : (placeholder ?? labels.selectPlaceholder)}
+          {selected
+            ? (selected.display ?? selected.label)
+            : (placeholder ?? labels.selectPlaceholder)}
         </span>
         {CHEVRON}
       </button>

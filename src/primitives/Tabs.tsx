@@ -12,14 +12,25 @@ import { cx } from '../util/cx'
    copied, shared, and reached with browser back — §13.
    ══════════════════════════════════════════════════════════════════════════*/
 
+/* A strip that scrolls sideways when the tabs outgrow it, and only sideways.
+   `overflow-x: auto` on its own makes the other axis `auto` too, and a box
+   that is a scroll container in both axes is one a finger can drag in both:
+   a swipe that starts on the strip rocks it around instead of scrolling the
+   page. Pinning the vertical axis hands that swipe up to the page, and the
+   contained horizontal overscroll keeps a sideways drag from bouncing the
+   page with it. */
+const STRIP_SCROLL =
+  'overflow-x-auto overflow-y-hidden overscroll-x-contain ' +
+  '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+
 export interface TabNavProps extends ComponentPropsWithoutRef<'nav'> {}
 
 export function TabNav({ className, children, ...rest }: TabNavProps) {
   return (
     <nav
       className={cx(
-        'flex items-stretch gap-1 overflow-x-auto border-b border-line',
-        '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+        'flex items-stretch gap-1 border-b border-line',
+        STRIP_SCROLL,
         className,
       )}
       {...rest}
@@ -111,8 +122,8 @@ export function Tabs({ items, defaultIndex = 0, label, className, ...rest }: Tab
         role="group"
         aria-label={label}
         className={cx(
-          'cx-tablist order-first flex items-stretch gap-1 overflow-x-auto border-b border-line',
-          '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+          'cx-tablist order-first flex items-stretch gap-1 border-b border-line',
+          STRIP_SCROLL,
         )}
       >
         {items.map((item, i) => (

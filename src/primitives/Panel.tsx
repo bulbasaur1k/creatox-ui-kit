@@ -11,7 +11,10 @@ export interface PanelProps extends Omit<ComponentPropsWithoutRef<'aside'>, 'tit
    * `docked`  — a column inside Split. The default.
    * `overlay` — floats above the object, for inspecting a second object
    *             without leaving the first.
-   * `auto`    — docked while there is room, overlay once there is not.
+   * `auto`    — docked, and on a narrow container `Split` moves it under
+   *             the object. It never floats on its own: an overlay needs a
+   *             way to be put away, and only the product has one — render
+   *             `overlay` when it is open, nothing when it is not.
    */
   mode?: 'docked' | 'overlay' | 'auto'
   width?: string
@@ -42,8 +45,6 @@ export function Panel({
         // source text, so a class name assembled from variables never ships.
         mode === 'overlay' &&
           'fixed inset-y-0 right-0 z-20 w-[min(var(--cx-panel-width,26rem),100vw)] border-l border-line shadow-overlay',
-        mode === 'auto' &&
-          '@max-medium/page:fixed @max-medium/page:inset-y-0 @max-medium/page:right-0 @max-medium/page:z-20 @max-medium/page:w-[min(var(--cx-panel-width,26rem),100vw)] @max-medium/page:border-l @max-medium/page:border-line @max-medium/page:shadow-overlay',
         className,
       )}
       style={vars({ '--cx-panel-width': width }, style)}

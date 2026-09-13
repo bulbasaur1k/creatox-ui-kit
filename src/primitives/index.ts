@@ -68,6 +68,17 @@ export {
   type ToastTone,
 } from './Toast'
 export { Badge, type BadgeProps, type Tone } from './Badge'
+export { Alert, type AlertProps } from './Alert'
+export {
+  Upload,
+  UploadList,
+  UploadItem,
+  formatBytes,
+  type UploadProps,
+  type UploadItemProps,
+  type UploadRejection,
+} from './Upload'
+export { TreeSelect, type TreeSelectProps, type TreeSelectNode } from './TreeSelect'
 export { Status, type StatusProps } from './Status'
 export {
   Separator,

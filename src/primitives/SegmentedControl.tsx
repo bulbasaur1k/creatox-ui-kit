@@ -39,8 +39,15 @@ const segment = cva(
   [
     'relative inline-flex min-w-0 cursor-pointer items-center justify-center',
     'rounded-control font-medium whitespace-nowrap text-fg-secondary',
-    'transition-colors duration-snap ease-snap',
+    // `instant`, not `snap`: the raised segment answers a tap, and a tap
+    // wants the change on the next frame — a fade under a finger reads as
+    // the control lagging behind it. The longer step is for hover only.
+    'transition-colors duration-instant ease-snap',
     'hover:not-has-[:disabled]:text-fg',
+    // Pressed shows on the way down, not only when the radio flips on the
+    // way up: on a phone the flip lands after the finger lifts, and a
+    // control that shows nothing until then looks like it is thinking.
+    'active:not-has-[:disabled]:bg-hover',
     // The checked segment is the raised one: it sits on the canvas colour
     // while the rest stay in the well behind it. Marked with a border rather
     // than a shadow — only transient layers cast one.

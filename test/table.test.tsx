@@ -178,3 +178,56 @@ test('inline-объект pinned не считается сменой колон
   expect(cellRenders).toBe(0)
   act(() => root.unmount())
 })
+
+test('строка-деталь появляется по кнопке и уходит по ней же', () => {
+  const rows = items(3)
+  const { root, host } = mount(
+    <DataTable
+      rows={rows}
+      columns={COLUMNS}
+      getRowId={getRowId}
+      virtual={false}
+      renderDetail={(item) => <div data-testid="detail">about {item.name}</div>}
+    />,
+  )
+  expect(host.querySelectorAll('tbody tr').length).toBe(3)
+  const toggle = host.querySelector<HTMLButtonElement>('tbody button[aria-expanded]')!
+  act(() => toggle.click())
+  expect(host.querySelectorAll('tbody tr').length).toBe(4)
+  expect(host.querySelector('[data-detail]')!.textContent).toContain('about item-0')
+  act(() => host.querySelector<HTMLButtonElement>('tbody button[aria-expanded]')!.click())
+  expect(host.querySelectorAll('tbody tr').length).toBe(3)
+  act(() => root.unmount())
+})
+
+test('дерево: дети появляются под родителем с отступом', () => {
+  interface Node {
+    id: number
+    name: string
+    qty: number
+    kids?: Node[]
+  }
+  const tree: Node[] = [
+    { id: 1, name: 'root', qty: 0, kids: [{ id: 2, name: 'child', qty: 1 }] },
+    { id: 3, name: 'leaf', qty: 2 },
+  ]
+  const seen: unknown[] = []
+  const { root, host } = mount(
+    <DataTable
+      rows={tree}
+      columns={COLUMNS as never}
+      getRowId={(n: Node) => String(n.id)}
+      getSubRows={(n: Node) => n.kids}
+      onExpandedChange={(e) => seen.push(e)}
+      virtual={false}
+    />,
+  )
+  expect(host.querySelectorAll('tbody tr').length).toBe(2)
+  act(() => host.querySelector<HTMLButtonElement>('tbody button[aria-expanded]')!.click())
+  expect(seen).toEqual([{ '1': true }])
+  const trs = host.querySelectorAll<HTMLElement>('tbody tr')
+  expect(trs.length).toBe(3)
+  expect(trs[1]!.textContent).toContain('child')
+  expect(trs[1]!.querySelector('td')!.style.paddingInlineStart).toBe('1.5rem')
+  act(() => root.unmount())
+})

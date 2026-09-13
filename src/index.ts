@@ -33,4 +33,15 @@ export * from './domain'
 // does not know this kit's utilities and will not resolve their conflicts.
 export { cx, cva, type VariantProps, type ClassValue } from './util/cx'
 export { useLabels, useLocale, LABELS_EN, LABELS_RU, type Labels } from './util/intl'
+// The timings of feedback: when a spinner may appear, how long a tick stays.
+// Exported so a product can settle its own flags the way the kit settles
+// Button and DataTable — one policy, wherever the pending state comes from.
+export {
+  useSettled,
+  useHeldResult,
+  SETTLE_DELAY,
+  SETTLE_MIN_DURATION,
+  RESULT_HOLD,
+  type SettleOptions,
+} from './util/settle'
 export type { Space } from './util/tokens'

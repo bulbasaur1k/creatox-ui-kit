@@ -302,6 +302,16 @@
   padding-inline: var(--cx-control-pad);
 }
 
+/* Monospace inside a control, as one utility rather than `font-mono` plus a
+   `text-[…]` size. The size is the reason: `text-*` is a font-size utility,
+   and the merge treats any font-size as opting out of the `control-*` row —
+   height and padding included. A field that only wanted a machine face was
+   losing its whole row. One name outside that group keeps the row intact. */
+@utility field-mono {
+  font-family: var(--font-mono);
+  font-size: 0.95em;
+}
+
 /* The same row with a button's roomier padding. Separate rather than layered
    on top of `control-*`, because two utilities both setting `padding-inline`
    would leave which one wins to the order Tailwind happens to emit them in. */
