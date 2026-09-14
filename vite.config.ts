@@ -81,6 +81,7 @@ export default defineConfig(({ mode }) => {
               index: resolve(root, 'demo/index.html'),
               table: resolve(root, 'demo/table.html'),
               stress: resolve(root, 'demo/stress.html'),
+              sheet: resolve(root, 'demo/sheet.html'),
             },
           },
         }

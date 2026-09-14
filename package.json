@@ -60,7 +60,8 @@
     "format:check": "oxfmt --check",
     "prepublishOnly": "npm run typecheck && npm run test && npm run build",
     "ladle": "ladle serve",
-    "ladle:build": "ladle build"
+    "ladle:build": "ladle build",
+    "figma:tokens": "bun scripts/export-figma-tokens.ts > figma/tokens.figma.json"
   },
   "peerDependencies": {
     "@tanstack/react-table": "^9.2.4",
