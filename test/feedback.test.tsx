@@ -194,7 +194,13 @@ test('палец на опции — начало прокрутки, а не в
     )
   touch('pointerdown')
   expect(picked).toEqual([])
-  touch('click')
+  // Палец ушёл в прокрутку — выбора нет.
+  touch('pointercancel')
+  touch('pointerup')
+  expect(picked).toEqual([])
+  // Палец лёг и поднялся на месте — это тап.
+  touch('pointerdown')
+  touch('pointerup')
   expect(picked).toEqual(['b'])
   // Мышь по-прежнему выбирает на нажатии.
   act(() =>

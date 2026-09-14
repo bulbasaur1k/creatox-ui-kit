@@ -97,6 +97,9 @@ const CHEVRON_INSET: Record<ControlSize, string> = {
  */
 const MATCH_CAP = 100
 
+/** How far a finger may drift between landing and lifting and still be a tap. */
+const TAP_SLACK = 10
+
 /* Nothing in the row is conditional, so the merge runs once for the module
    rather than once per option — a hundred rows, a hundred calls, on every
    keystroke. Measured at about a microsecond each: not the difference between
@@ -494,6 +497,8 @@ function OptionList({
   note,
 }: OptionListProps) {
   const labels = useLabels()
+  // Where a finger landed, for the lift to compare against.
+  const press = useRef<{ index: number; x: number; y: number } | null>(null)
 
   return (
     // Its own id, not the popover's: `popovertarget` already claims that one,
@@ -534,17 +539,31 @@ function OptionList({
             // A mouse picks on the press: the popover light-dismisses on a press
             // elsewhere, and by the time a click lands the list may be gone.
             // A finger does not — its press is how a scroll begins, and picking
-            // there closed the list under every attempt to scroll it. The tap
-            // comes through as a click once the finger lifts without moving.
-            // `preventDefault` stays for both: it keeps focus in the field.
+            // there closed the list under every attempt to scroll it. A finger
+            // picks on the lift instead, and only if it lifts where it landed:
+            // a scroll ends in `pointercancel`, never in `pointerup`. Not on
+            // `click`, because WebKit withholds the click after a cancelled
+            // `pointerdown`, and the cancel is needed to keep focus in the field.
             onPointerDown={(event) => {
               event.preventDefault()
-              if (event.pointerType !== 'mouse') return
+              if (event.pointerType === 'mouse') {
+                if (!option.disabled) onPick(index)
+                return
+              }
+              press.current = { index, x: event.clientX, y: event.clientY }
+            }}
+            onPointerUp={(event) => {
+              const start = press.current
+              press.current = null
+              if (event.pointerType === 'mouse' || !start || start.index !== index) return
+              if (
+                Math.hypot(event.clientX - start.x, event.clientY - start.y) > TAP_SLACK
+              )
+                return
               if (!option.disabled) onPick(index)
             }}
-            onClick={(event) => {
-              if ((event.nativeEvent as PointerEvent).pointerType === 'mouse') return
-              if (!option.disabled) onPick(index)
+            onPointerCancel={() => {
+              press.current = null
             }}
             onPointerEnter={() => {
               if (!option.disabled) onHover(index)
