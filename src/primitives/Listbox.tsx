@@ -503,7 +503,10 @@ function OptionList({
       ref={boxRef}
       role="listbox"
       id={`${listId}-box`}
-      className="max-h-72 overflow-auto p-1"
+      // `overscroll-contain`: at the end of the list the wheel must stop, not
+      // carry on into the page — which scrolls the field away and takes the
+      // anchored list with it.
+      className="max-h-72 overflow-auto overscroll-contain p-1"
     >
       {options.length === 0 && (
         <div className="px-2 py-1.5 text-meta text-fg-muted">{empty ?? labels.empty}</div>
@@ -528,11 +531,19 @@ function OptionList({
             // the element by `useActiveOption`, so moving through the list
             // costs one attribute rather than a rebuild of every row.
             //
-            // Pointer, not click: the popover light-dismisses on a pointer
-            // press elsewhere, and by the time a click event lands the list
-            // may already be gone.
+            // A mouse picks on the press: the popover light-dismisses on a press
+            // elsewhere, and by the time a click lands the list may be gone.
+            // A finger does not — its press is how a scroll begins, and picking
+            // there closed the list under every attempt to scroll it. The tap
+            // comes through as a click once the finger lifts without moving.
+            // `preventDefault` stays for both: it keeps focus in the field.
             onPointerDown={(event) => {
               event.preventDefault()
+              if (event.pointerType !== 'mouse') return
+              if (!option.disabled) onPick(index)
+            }}
+            onClick={(event) => {
+              if ((event.nativeEvent as PointerEvent).pointerType === 'mouse') return
               if (!option.disabled) onPick(index)
             }}
             onPointerEnter={() => {

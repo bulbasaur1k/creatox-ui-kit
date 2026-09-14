@@ -141,9 +141,13 @@ export function Tabs({ items, defaultIndex = 0, label, className, ...rest }: Tab
       </div>
 
       {items.map((item, i) => (
-        <div key={`panel-${i}`} className="cx-tab-panel min-w-0">
+        // A <section>, not a <div>: the CSS picks the open panel with
+        // `nth-of-type`, and the tab strip before the panels is a div too — as
+        // a div the first panel counted second, so the first tab showed nothing
+        // and every tab showed the panel before its own.
+        <section key={`panel-${i}`} className="cx-tab-panel min-w-0">
           {item.content}
-        </div>
+        </section>
       ))}
     </div>
   )

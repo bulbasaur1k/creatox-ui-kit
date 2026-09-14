@@ -75,6 +75,7 @@ export function Workbench() {
   const [freezeUntil, setFreezeUntil] = useState('2026-03-20')
   const [freezeAt, setFreezeAt] = useState('18:00')
   const [page, setPage] = useState(7)
+  const [navTab, setNavTab] = useState('Overview')
   const filters = usePopover()
 
   const nextTheme = theme === 'auto' ? 'light' : theme === 'light' ? 'dark' : 'auto'
@@ -176,17 +177,22 @@ export function Workbench() {
               }
               navigation={
                 <TabNav>
-                  <Tab href="#" aria-current="page">
-                    Overview
-                  </Tab>
-                  <Tab href="#" count={12}>
-                    Deployments
-                  </Tab>
-                  <Tab href="#" count={3}>
-                    Incidents
-                  </Tab>
-                  <Tab href="#">Logs</Tab>
-                  <Tab href="#">Settings</Tab>
+                  {/* В продукте текущую вкладку ставит роутер по URL; здесь — состояние,
+                      чтобы навигация в витрине отвечала на клик. */}
+                  {TAB_NAV.map((tab) => (
+                    <Tab
+                      key={tab.label}
+                      href="#"
+                      count={tab.count}
+                      aria-current={tab.label === navTab ? 'page' : undefined}
+                      onClick={(event) => {
+                        event.preventDefault()
+                        setNavTab(tab.label)
+                      }}
+                    >
+                      {tab.label}
+                    </Tab>
+                  ))}
                 </TabNav>
               }
             />
@@ -554,6 +560,14 @@ function Dots() {
     </svg>
   )
 }
+
+const TAB_NAV = [
+  { label: 'Overview' },
+  { label: 'Deployments', count: 12 },
+  { label: 'Incidents', count: 3 },
+  { label: 'Logs' },
+  { label: 'Settings' },
+]
 
 const DEPLOYMENTS = [
   {

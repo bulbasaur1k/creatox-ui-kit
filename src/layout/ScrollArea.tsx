@@ -29,9 +29,14 @@ export function ScrollArea({
   return (
     <div
       className={cx(
-        'min-h-0 min-w-0 overscroll-contain [scrollbar-width:thin]',
+        'min-h-0 min-w-0 [scrollbar-width:thin]',
         AXIS[axis],
-        maxHeight && 'max-h-[var(--cx-scroll-max)]',
+        // Contained overscroll only where there is a bound to scroll against.
+        // `contain` means "never hand the wheel to the parent", and a scroll
+        // container that has nothing to scroll is always at its boundary — an
+        // unbounded area with that rule on it swallows every wheel turn over it
+        // and the page under the pointer stands still.
+        maxHeight && 'max-h-[var(--cx-scroll-max)] overscroll-contain',
         fade && 'scroll-fade',
         className,
       )}

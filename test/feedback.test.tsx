@@ -6,6 +6,7 @@ import { Button } from '../src/primitives/Button'
 import { Input } from '../src/primitives/Field'
 import { Upload } from '../src/primitives/Upload'
 import { TreeSelect } from '../src/primitives/TreeSelect'
+import { Select } from '../src/primitives/Listbox'
 import { useSettled, useHeldResult } from '../src/util/settle'
 
 /* ── Обратная связь на ожидание ────────────────────────────────────────────
@@ -155,7 +156,11 @@ test('TreeSelect показывает свёрнутое дерево и рас�
   )!
   act(() =>
     fold.dispatchEvent(
-      new PointerEvent('pointerdown', { bubbles: true, cancelable: true }),
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        cancelable: true,
+        pointerType: 'mouse',
+      }),
     ),
   )
   expect(host.querySelectorAll('[role=option]').length).toBe(2)
@@ -168,5 +173,39 @@ test('mono-поле остаётся в своём ряду: высота и п�
   expect(cls).toContain('control-md')
   expect(cls).toContain('field-mono')
   expect(cls).not.toContain('text-[')
+  act(() => root.unmount())
+})
+
+test('палец на опции — начало прокрутки, а не выбор; выбирает тап', () => {
+  const picked: string[] = []
+  const { root, host } = mount(
+    <Select
+      options={['a', 'b', 'c'].map((v) => ({ value: v, label: v }))}
+      defaultValue="a"
+      onValueChange={(v) => picked.push(v)}
+    />,
+  )
+  const option = host.querySelectorAll<HTMLElement>('[role=option]')[1]!
+  const touch = (type: string) =>
+    act(() =>
+      option.dispatchEvent(
+        new PointerEvent(type, { bubbles: true, cancelable: true, pointerType: 'touch' }),
+      ),
+    )
+  touch('pointerdown')
+  expect(picked).toEqual([])
+  touch('click')
+  expect(picked).toEqual(['b'])
+  // Мышь по-прежнему выбирает на нажатии.
+  act(() =>
+    host.querySelectorAll<HTMLElement>('[role=option]')[2]!.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        cancelable: true,
+        pointerType: 'mouse',
+      }),
+    ),
+  )
+  expect(picked).toEqual(['b', 'c'])
   act(() => root.unmount())
 })

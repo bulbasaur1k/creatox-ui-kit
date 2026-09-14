@@ -112,11 +112,19 @@ export function TreeSelect({
                   aria-label={isOpen ? labels.collapseRow : labels.expandRow}
                   aria-expanded={isOpen}
                   // Folding is not choosing: the press stops here, before the
-                  // row picks the option and the popover closes.
+                  // row picks the option and the popover closes. A mouse folds
+                  // on the press; a finger on the tap, so a scroll that starts
+                  // on the chevron stays a scroll.
                   onPointerDown={(event) => {
                     event.preventDefault()
                     event.stopPropagation()
-                    toggle(node.value)
+                    if (event.pointerType === 'mouse') toggle(node.value)
+                  }}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    if ((event.nativeEvent as PointerEvent).pointerType !== 'mouse') {
+                      toggle(node.value)
+                    }
                   }}
                   className={cx(
                     'inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-control',
