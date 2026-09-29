@@ -268,7 +268,7 @@ export const $saveResult = createStore<'success' | 'error' | null>(null)
 
 ## Figma
 
-Токены уезжают в переменные Figma плагином из папки `figma/` (`npm run figma:tokens` → импорт → коллекция с режимами Light и Dark), компоненты — с листа [demo/sheet.html](https://bulbasaur1k.github.io/creatox-ui-kit/demo/sheet.html) через html.to.design. Как именно и как держать в синхроне — [docs/figma.ru.md](docs/figma.ru.md).
+Компоненты снимаются с листа [demo/sheet.html](https://bulbasaur1k.github.io/creatox-ui-kit/demo/sheet.html) — того, что нарисовал браузер, со всеми компонентами кита и раскрытыми слоями. В веб-Figma лист попадает как SVG: кнопка «SVG для Figma» в шапке, файл — на холст. В десктопной Figma плагин из папки `figma/` рисует его страницей с auto layout, а токены (`npm run figma:tokens`) делает коллекцией переменных с режимами Light и Dark. Как именно и как держать в синхроне — [docs/figma.ru.md](docs/figma.ru.md).
 
 ## Чего кит не обещает
 

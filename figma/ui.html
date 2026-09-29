@@ -16,7 +16,7 @@
       }
       textarea {
         width: 100%;
-        height: 140px;
+        height: 120px;
         box-sizing: border-box;
         font:
           11px/1.4 ui-monospace,
@@ -25,6 +25,14 @@
         border-radius: 4px;
         padding: 6px;
         resize: vertical;
+      }
+      input[type='url'] {
+        width: 100%;
+        box-sizing: border-box;
+        font: inherit;
+        border: 1px solid #c8c8c8;
+        border-radius: 4px;
+        padding: 5px 8px;
       }
       .row {
         display: flex;
@@ -54,79 +62,266 @@
         gap: 6px;
         align-items: center;
       }
+      .tabs {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 12px;
+        border-bottom: 1px solid #eee;
+      }
+      .tabs button {
+        border: 0;
+        border-bottom: 2px solid transparent;
+        border-radius: 0;
+        background: none;
+        padding: 6px 10px;
+        color: #666;
+      }
+      .tabs button[aria-selected='true'] {
+        color: #111;
+        border-bottom-color: #111;
+      }
+      details {
+        margin: 8px 0;
+      }
+      summary {
+        cursor: pointer;
+        color: #666;
+      }
       #log {
         white-space: pre-wrap;
         font:
           11px/1.4 ui-monospace,
           monospace;
         color: #444;
-        max-height: 160px;
+        max-height: 140px;
         overflow: auto;
         border-top: 1px solid #eee;
         padding-top: 8px;
       }
+      /* Лист виден, только уменьшен: спрятанному или вынесенному за экран
+         iframe браузер урезает таймеры, и снимок может не прийти. */
+      #stage {
+        width: 396px;
+        height: 275px;
+        overflow: hidden;
+        border: 1px solid #eee;
+        border-radius: 4px;
+      }
+      #stage iframe {
+        width: 1440px;
+        height: 1000px;
+        border: 0;
+        transform: scale(0.275);
+        transform-origin: 0 0;
+      }
     </style>
   </head>
   <body>
-    <p>
-      Вставьте содержимое <code>figma/tokens.figma.json</code> или выберите файл. Токены
-      станут переменными коллекции «creatox-ui-kit» с режимами Light и Dark, размеры
-      текста — текстовыми стилями. Повторный запуск обновляет значения, а не дублирует.
-    </p>
-    <div class="row">
-      <input id="file" type="file" accept=".json,application/json" />
-      <label><input id="styles" type="checkbox" checked /> текстовые стили</label>
+    <div class="tabs" role="tablist">
+      <button role="tab" aria-selected="true" data-tab="tokens">Токены</button>
+      <button role="tab" aria-selected="false" data-tab="sheet">Лист</button>
     </div>
-    <textarea id="json" placeholder='{"tokens": […]}'></textarea>
-    <div class="row">
-      <button id="run" class="primary">Импортировать</button>
-      <span id="status"></span>
-    </div>
-    <div id="log"></div>
-    <script>
-      const json = document.getElementById('json')
-      const file = document.getElementById('file')
-      const run = document.getElementById('run')
-      const status = document.getElementById('status')
-      const log = document.getElementById('log')
 
-      file.addEventListener('change', async () => {
-        const [chosen] = file.files
-        if (chosen) json.value = await chosen.text()
+    <section id="tab-tokens">
+      <p>
+        Вставьте содержимое <code>figma/tokens.figma.json</code> или выберите файл. Токены
+        станут переменными коллекции «creatox-ui-kit» с режимами Light и Dark, размеры
+        текста — текстовыми стилями. Повторный запуск обновляет значения, а не дублирует.
+      </p>
+      <div class="row">
+        <input id="file" type="file" accept=".json,application/json" />
+        <label><input id="styles" type="checkbox" checked /> текстовые стили</label>
+      </div>
+      <textarea id="json" placeholder='{"tokens": […]}'></textarea>
+      <div class="row">
+        <button id="run" class="primary">Импортировать</button>
+      </div>
+    </section>
+
+    <section id="tab-sheet" hidden>
+      <p>
+        Лист <code>demo/sheet.html</code> открывается здесь же, невидимо, и отдаёт снимок
+        того, что нарисовал браузер. По снимку на странице «creatox-ui-kit» появляется
+        секция Light или Dark с фреймом на каждую секцию листа; flex-контейнеры становятся
+        auto layout. Повторный импорт перерисовывает секцию темы.
+      </p>
+      <input
+        id="url"
+        type="url"
+        value="https://bulbasaur1k.github.io/creatox-ui-kit/demo/sheet.html"
+      />
+      <div class="row">
+        <label><input id="light" type="checkbox" checked /> Light</label>
+        <label><input id="dark" type="checkbox" checked /> Dark</label>
+      </div>
+      <div class="row">
+        <button id="run-sheet" class="primary">Импортировать лист</button>
+      </div>
+      <div id="stage" hidden></div>
+      <details>
+        <summary>Из файла</summary>
+        <p>
+          Если лист отсюда не открывается, снимок можно скачать кнопкой «Снимок для Figma»
+          на самом листе и выбрать здесь.
+        </p>
+        <input id="snapshot-file" type="file" accept=".json,application/json" />
+      </details>
+    </section>
+
+    <div class="row"><span id="status"></span></div>
+    <div id="log"></div>
+
+    <script>
+      const $ = (id) => document.getElementById(id)
+      const status = $('status')
+      const log = $('log')
+      const buttons = [$('run'), $('run-sheet')]
+
+      for (const tab of document.querySelectorAll('[role="tab"]')) {
+        tab.addEventListener('click', () => {
+          for (const other of document.querySelectorAll('[role="tab"]')) {
+            const selected = other === tab
+            other.setAttribute('aria-selected', String(selected))
+            $(`tab-${other.dataset.tab}`).hidden = !selected
+          }
+        })
+      }
+
+      function busy(text) {
+        for (const button of buttons) button.disabled = true
+        status.textContent = text
+        log.textContent = ''
+      }
+
+      function send(message) {
+        parent.postMessage({ pluginMessage: message }, '*')
+      }
+
+      /* ── Токены ── */
+      $('file').addEventListener('change', async () => {
+        const [chosen] = $('file').files
+        if (chosen) $('json').value = await chosen.text()
       })
 
-      run.addEventListener('click', () => {
+      $('run').addEventListener('click', () => {
         let data
         try {
-          data = JSON.parse(json.value)
+          data = JSON.parse($('json').value)
         } catch (error) {
           status.textContent = 'Это не JSON: ' + error.message
           return
         }
-        run.disabled = true
-        status.textContent = 'Импортирую…'
-        log.textContent = ''
-        parent.postMessage(
-          {
-            pluginMessage: {
-              type: 'import',
-              tokens: data.tokens ?? data,
-              textStyles: document.getElementById('styles').checked,
-            },
-          },
-          '*',
-        )
+        busy('Импортирую…')
+        send({
+          type: 'import',
+          tokens: data.tokens ?? data,
+          textStyles: $('styles').checked,
+        })
       })
 
+      /* ── Лист ──
+         Лист грузится в скрытый iframe шириной 1440 и получает сообщение
+         `cx-snapshot`; отвечает он снимком (demo/snapshot.ts). Спрашиваем
+         каждые полсекунды, пока не ответит: слушатель у листа появляется
+         после рендера, и первое сообщение может прийти раньше него. */
+      function takeSnapshot(url, theme) {
+        return new Promise((resolve, reject) => {
+          const stage = document.createElement('iframe')
+          const src = new URL(url)
+          src.searchParams.set('theme', theme)
+          let asking
+          const finish = (result, error) => {
+            clearInterval(asking)
+            clearTimeout(deadline)
+            window.removeEventListener('message', onMessage)
+            stage.remove()
+            $('stage').hidden = true
+            error ? reject(error) : resolve(result)
+          }
+          const deadline = setTimeout(
+            () => finish(null, new Error(`лист ${src} не ответил за 40 с`)),
+            40000,
+          )
+          const onMessage = (event) => {
+            if (event.source !== stage.contentWindow) return
+            if (event.data && event.data.type === 'cx-snapshot')
+              finish(event.data.snapshot)
+          }
+          window.addEventListener('message', onMessage)
+          stage.addEventListener('load', () => {
+            asking = setInterval(
+              () => stage.contentWindow.postMessage({ type: 'cx-snapshot' }, '*'),
+              500,
+            )
+          })
+          stage.src = src.href
+          $('stage').hidden = false
+          $('stage').append(stage)
+        })
+      }
+
+      const pending = []
+      let resolveDone
+
       window.onmessage = (event) => {
-        const message = event.data.pluginMessage
+        const message = event.data && event.data.pluginMessage
         if (!message) return
         if (message.type === 'log') log.textContent += message.text + '\n'
         if (message.type === 'done') {
-          run.disabled = false
           status.textContent = message.text
+          if (resolveDone) resolveDone(message.text)
+          else for (const button of buttons) button.disabled = false
         }
       }
+
+      /** Отдаёт снимок плагину и ждёт его `done`. */
+      function importSnapshot(snapshot) {
+        return new Promise((resolve) => {
+          resolveDone = resolve
+          send({ type: 'import-sheet', snapshot })
+        }).finally(() => {
+          resolveDone = undefined
+        })
+      }
+
+      $('run-sheet').addEventListener('click', async () => {
+        const themes = [
+          $('light').checked && 'light',
+          $('dark').checked && 'dark',
+        ].filter(Boolean)
+        if (themes.length === 0) {
+          status.textContent = 'Выберите хотя бы одну тему'
+          return
+        }
+        busy('Открываю лист…')
+        try {
+          for (const theme of themes) {
+            status.textContent = `Снимаю лист (${theme})…`
+            const snapshot = await takeSnapshot($('url').value, theme)
+            status.textContent = `Рисую (${theme})…`
+            const result = await importSnapshot(snapshot)
+            if (result.startsWith('Ошибка')) break
+          }
+        } catch (error) {
+          status.textContent = 'Ошибка: ' + error.message
+        }
+        for (const button of buttons) button.disabled = false
+      })
+
+      $('snapshot-file').addEventListener('change', async () => {
+        const [chosen] = $('snapshot-file').files
+        if (!chosen) return
+        let snapshot
+        try {
+          snapshot = JSON.parse(await chosen.text())
+        } catch (error) {
+          status.textContent = 'Это не JSON: ' + error.message
+          return
+        }
+        busy('Рисую…')
+        await importSnapshot(snapshot)
+        for (const button of buttons) button.disabled = false
+      })
     </script>
   </body>
 </html>

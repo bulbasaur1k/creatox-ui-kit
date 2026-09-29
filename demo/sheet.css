@@ -1,0 +1,42 @@
+/* Слои на листе — раскрытыми и в потоке страницы.
+
+   Список Select, календарь DatePicker, меню, диалог, шторка и тосты живут в
+   top layer и показываются только по действию. Для листа это значит, что их
+   нет: ни html.to.design, ни снимок, ни SVG не увидят того, что закрыто. Под
+   `.sheet-open` те же элементы стоят открытыми там, где они объявлены, —
+   тем же набором классов, с тем же фоном, рамкой и тенью, но без фиксации к
+   окну и без анимации появления.
+
+   Без слоя, чтобы перебить и components, и utilities: это правила листа, а
+   не кита, и в пакет они не попадают. */
+
+.sheet-open [popover],
+.sheet-open dialog {
+  position: static;
+  inset: auto;
+  margin: 0;
+  opacity: 1;
+  scale: none;
+  translate: none;
+  transition: none;
+  max-block-size: none;
+}
+
+.sheet-open [popover] {
+  display: block;
+}
+
+.sheet-open dialog {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Высота шторки — доля окна, и в потоке она растянула бы лист на полэкрана. */
+.sheet-open dialog.cx-sheet {
+  block-size: 22rem;
+}
+
+/* Список select шириной с поле: в потоке `anchor-size()` читать не у чего. */
+.sheet-open [popover][data-match='anchor'] {
+  min-inline-size: 100%;
+}

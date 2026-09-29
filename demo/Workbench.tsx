@@ -40,7 +40,12 @@ import {
   Toggle,
   Tr,
   RowActions,
+  Icon,
   IconButton,
+  SideNav,
+  SideNavGroup,
+  SideNavItem,
+  SideNavLabel,
   Tree,
   TreeLeaf,
   TreeNode,
@@ -59,6 +64,7 @@ import {
   toast,
   type Density,
 } from '../src'
+import { eye, filter, menu, search, triangleAlert } from '../src/icons'
 
 /**
  * A workbench rather than a component gallery: the kit is meant to be judged
@@ -84,57 +90,78 @@ export function Workbench() {
     <Root className="min-h-screen" density={density}>
       <Split>
         {/* ── Navigation: objects, not features ─────────────────────────── */}
-        <nav data-cx-collapsible="true" className="flex flex-col gap-4 p-4">
-          <Inline justify="between">
-            <Text variant="label">Creatox</Text>
-            <Inline gap={1}>
+        <SideNav
+          header={
+            <div className="flex h-control-md items-center gap-2 px-[var(--cx-sidenav-inset)]">
+              <span className="cx-sidenav-icon rounded-sm bg-accent text-micro font-semibold text-fg-inverted">
+                C
+              </span>
+              <SideNavLabel className="text-ui font-semibold">Creatox</SideNavLabel>
+            </div>
+          }
+          footer={
+            <>
               {/* The whole point of the density switch is that nothing below
                   this line knows about it. One attribute, every control. */}
-              <Button
-                size="sm"
-                variant="quiet"
+              <SideNavItem
+                as="button"
+                icon={<Icon>{filter}</Icon>}
+                label="Density"
                 onClick={() => setDensity(density === 'compact' ? 'touch' : 'compact')}
               >
-                {density}
-              </Button>
-              <Button
-                size="sm"
-                variant="quiet"
+                Density: {density}
+              </SideNavItem>
+              <SideNavItem
+                as="button"
+                icon={<Icon>{eye}</Icon>}
+                label="Theme"
                 onClick={() => {
                   setTheme(nextTheme)
                   applyTheme(nextTheme)
                 }}
               >
-                {theme}
-              </Button>
-            </Inline>
-          </Inline>
+                Theme: {theme}
+              </SideNavItem>
+            </>
+          }
+        >
+          <SideNavItem href="#" icon={<Icon>{menu}</Icon>} selected>
+            Overview
+          </SideNavItem>
+          <SideNavItem href="#" icon={<Icon>{search}</Icon>}>
+            Search
+          </SideNavItem>
+          <SideNavItem href="#" icon={<Icon>{triangleAlert}</Icon>} count={3}>
+            Incidents
+          </SideNavItem>
 
-          <Tree>
-            <TreeNode
-              label="smart-travel"
-              open
-              leading={
-                <Status tone="success" markOnly>
-                  healthy
-                </Status>
-              }
-            >
-              <TreeLeaf href="#" selected>
-                booking-api
-              </TreeLeaf>
-              <TreeLeaf href="#">search-api</TreeLeaf>
-              <TreeLeaf href="#">telegram-bot</TreeLeaf>
-              <TreeNode label="datastores">
-                <TreeLeaf href="#">postgres-main</TreeLeaf>
-                <TreeLeaf href="#">redis-cache</TreeLeaf>
+          <SideNavGroup title="Objects" onlyExpanded>
+            <Tree>
+              <TreeNode
+                label="smart-travel"
+                open
+                leading={
+                  <Status tone="success" markOnly>
+                    healthy
+                  </Status>
+                }
+              >
+                <TreeLeaf href="#" selected>
+                  booking-api
+                </TreeLeaf>
+                <TreeLeaf href="#">search-api</TreeLeaf>
+                <TreeLeaf href="#">telegram-bot</TreeLeaf>
+                <TreeNode label="datastores">
+                  <TreeLeaf href="#">postgres-main</TreeLeaf>
+                  <TreeLeaf href="#">redis-cache</TreeLeaf>
+                </TreeNode>
               </TreeNode>
-            </TreeNode>
-            <TreeNode label="creatox-media">
-              <TreeLeaf href="#">ingest</TreeLeaf>
-            </TreeNode>
-          </Tree>
-        </nav>
+              <TreeNode label="creatox-media">
+                <TreeLeaf href="#">ingest</TreeLeaf>
+              </TreeNode>
+            </Tree>
+          </SideNavGroup>
+        </SideNav>
 
         {/* ── The object ─────────────────────────────────────────────────── */}
         <ScrollArea className="p-6">

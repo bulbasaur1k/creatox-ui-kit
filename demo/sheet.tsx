@@ -1,6 +1,7 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import '../src/styles/index.css'
+import './sheet.css'
 import {
   ActivityStream,
   Alert,
@@ -33,6 +34,10 @@ import {
   SegmentedControl,
   Select,
   Separator,
+  SideNav,
+  SideNavGroup,
+  SideNavItem,
+  SideNavLabel,
   Skeleton,
   Slider,
   Status,
@@ -54,21 +59,99 @@ import {
   UploadItem,
   UploadList,
   applyTheme,
+  Cluster,
+  Container,
+  DateRangePicker,
+  Dialog,
+  Grid,
+  Grow,
+  Inline,
+  InputGroup,
+  Link,
+  Menu,
+  MenuItem,
+  MenuLabel,
+  MenuSeparator,
+  ObjectActions,
+  Panel,
+  Popover,
+  ScrollArea,
+  Sheet,
+  Sidebar,
+  SortButton,
+  Spinner,
+  Split,
+  Stack,
+  Tabs,
+  Toaster,
+  toast,
+  usePopover,
+  cx,
+  Section as KitSection,
+  type DateRange,
   type Tone,
 } from '../src/index'
-import { check, ellipsis, pencil, plus, search, triangleAlert, x } from '../src/icons'
+import {
+  bell,
+  check,
+  ellipsis,
+  menu,
+  pencil,
+  plus,
+  search,
+  settings,
+  triangleAlert,
+  x,
+} from '../src/icons'
 import { DataTable, defineColumns } from '../src/table'
+import { snapshotSheet } from './snapshot'
+import { snapshotToSvg } from './svg'
 
 /* Лист компонентов для переноса в Figma. Не витрина и не стори: каждый
    компонент в каждом состоянии, размере и тоне, подписанный, на одном
    длинном листе. Секции — это будущие фреймы; `?theme=dark` даёт тот же лист
-   в тёмной теме. Импортируется целиком плагином html.to.design, дальше
-   дизайнер режет на компоненты. */
+   в тёмной теме. Плагин из figma/ открывает лист у себя в iframe и просит
+   снимок сообщением `cx-snapshot`; кнопки в шапке отдают тот же снимок
+   файлом — JSON для плагина или SVG, который веб-Figma открывает без
+   плагинов. Дальше дизайнер режет на компоненты. */
 
 const params = new URLSearchParams(location.search)
 // Pinned, not `auto`: the sheet has to come out the same on any machine that
 // imports it, whatever the OS preference there.
-applyTheme(params.get('theme') === 'dark' ? 'dark' : 'light')
+const theme = params.get('theme') === 'dark' ? 'dark' : 'light'
+applyTheme(theme)
+
+const embedded = window.parent !== window
+
+window.addEventListener('message', async (event) => {
+  if (
+    !event.data ||
+    event.data.type !== 'cx-snapshot' ||
+    !(event.source instanceof Window)
+  ) {
+    return
+  }
+  const snapshot = await snapshotSheet()
+  event.source.postMessage({ type: 'cx-snapshot', snapshot }, '*')
+})
+
+function save(content: string, type: string, name: string) {
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(new Blob([content], { type }))
+  link.download = name
+  link.click()
+  URL.revokeObjectURL(link.href)
+}
+
+async function downloadSnapshot() {
+  const snapshot = await snapshotSheet()
+  save(JSON.stringify(snapshot), 'application/json', `sheet.${theme}.figma.json`)
+}
+
+async function downloadSvg() {
+  const snapshot = await snapshotSheet()
+  save(snapshotToSvg(snapshot), 'image/svg+xml', `creatox-ui-kit.${theme}.svg`)
+}
 
 const TONES: Tone[] = ['neutral', 'accent', 'success', 'warning', 'danger', 'info']
 const SIZES = ['sm', 'md', 'lg'] as const
@@ -87,12 +170,53 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="grid grid-cols-[10rem_1fr] items-start gap-4">
+    <div data-figma-name={label} className="grid grid-cols-[10rem_1fr] items-start gap-4">
       <span className="pt-1 text-meta text-fg-muted">{label}</span>
       <div className="flex flex-wrap items-center gap-3">{children}</div>
     </div>
   )
 }
+
+/* Слои кита — список Select, календарь DatePicker, меню, диалог, шторка,
+   тосты — показываются только по действию, и на листе их не было бы вовсе.
+   Внутри Opened они стоят раскрытыми там, где объявлены (sheet.css). Тостер
+   сам поднимает себя в top layer при монтировании, поэтому здесь его
+   опускают обратно — эффект родителя идёт после эффектов детей. `inert`,
+   потому что это картинка состояния: клик по раскрытому списку открыл бы
+   его ещё раз, уже как настоящий поповер. */
+function Opened({ children, className }: { children: ReactNode; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    for (const node of ref.current?.querySelectorAll<HTMLElement>('[popover]') ?? []) {
+      if (node.matches(':popover-open')) node.hidePopover()
+    }
+  }, [])
+  return (
+    <div ref={ref} inert className={cx('sheet-open', className)}>
+      {children}
+    </div>
+  )
+}
+
+/** Заглушка для макетов: показывает, куда что встало. */
+function Block({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <div
+      className={cx(
+        'rounded-sm border border-line bg-subtle px-3 py-2 text-meta text-fg-secondary',
+        className,
+      )}
+    >
+      {children}
+    </div>
+  )
+}
+
+// Тосты без таймера: лист — снимок, и уходить им некуда.
+toast({ title: 'Накладная принята', description: '12 позиций на складе', duration: 0 })
+toast({ title: 'Сохранено', tone: 'success', duration: 0 })
+toast({ title: 'Принтер не отвечает', tone: 'warning', duration: 0 })
+toast({ title: 'Не удалось отправить', tone: 'danger', duration: 0 })
 
 const RUB = new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB' })
 
@@ -149,17 +273,45 @@ const COLUMNS = col.columns([
   }),
 ])
 
-function Sheet() {
+function ComponentSheet() {
   const [pin, setPin] = useState('12')
+  const [date, setDate] = useState('2026-03-20')
+  const [time, setTime] = useState('18:00')
+  const [span, setSpan] = useState<DateRange | null>({
+    start: '2026-03-09',
+    end: '2026-03-13',
+  })
+  const [day, setDay] = useState('2026-03-20')
+  const [range, setRange] = useState<DateRange | null>({
+    start: '2026-03-09',
+    end: '2026-03-13',
+  })
+  const [page, setPage] = useState(7)
+  const [smallPage, setSmallPage] = useState(1)
   return (
     <Root className="min-h-dvh bg-canvas px-8 pb-16">
-      <header className="flex items-baseline justify-between py-8">
+      <header
+        data-figma-frame="Header"
+        className="flex items-baseline justify-between py-8"
+      >
         <Text variant="identity" as="h1" className="m-0">
           creatox-ui-kit
         </Text>
-        <Text variant="meta" tone="muted">
-          {params.get('theme') === 'dark' ? 'dark' : 'light'} · sheet for Figma
-        </Text>
+        <div className="flex items-baseline gap-4">
+          <Text variant="meta" tone="muted">
+            {theme} · sheet for Figma
+          </Text>
+          {!embedded && (
+            <div data-figma-skip className="flex gap-2">
+              <Button size="sm" variant="primary" onClick={downloadSvg}>
+                SVG для Figma
+              </Button>
+              <Button size="sm" onClick={downloadSnapshot}>
+                Снимок для плагина
+              </Button>
+            </div>
+          )}
+        </div>
       </header>
 
       <Section title="Typography">
@@ -188,6 +340,22 @@ function Sheet() {
         <Row label="code">
           <Code>booking-api</Code>
           <Code block>{'{ "status": "ok" }'}</Code>
+        </Row>
+        <Row label="link">
+          <Link href="#">Накладная УПД-4471</Link>
+          <Text>
+            Текст со{' '}
+            <Link href="#" variant="inline">
+              ссылкой внутри
+            </Link>{' '}
+            абзаца
+          </Text>
+          <Link href="#" variant="quiet">
+            booking-api
+          </Link>
+          <Link href="#" external>
+            Документация
+          </Link>
         </Row>
       </Section>
 
@@ -230,6 +398,20 @@ function Sheet() {
           ))}
           <IconButton variant="bordered" label="Изменить" icon={<Icon>{pencil}</Icon>} />
           <IconButton variant="danger" label="Удалить" icon={<Icon>{x}</Icon>} />
+        </Row>
+        <Row label="icon tooltip">
+          <IconButton
+            variant="bordered"
+            label="Изменить"
+            icon={<Icon>{pencil}</Icon>}
+            tooltip
+          />
+        </Row>
+        <Row label="spinner">
+          <Spinner />
+          <Text variant="meta" tone="muted" className="inline-flex items-center gap-2">
+            <Spinner /> Загружаю
+          </Text>
         </Row>
       </Section>
 
@@ -298,8 +480,29 @@ function Sheet() {
               />
             )}
           </Field>
-          <Field label="Дата">{(p) => <DatePicker {...p} value="2026-03-20" />}</Field>
-          <Field label="Время">{(p) => <TimePicker {...p} value="18:00" />}</Field>
+          <Field label="Дата">
+            {(p) => <DatePicker {...p} value={date} onValueChange={setDate} />}
+          </Field>
+          <Field label="Время">
+            {(p) => <TimePicker {...p} value={time} onValueChange={setTime} />}
+          </Field>
+          <Field label="Период" className="col-span-2">
+            {(p) => <DateRangePicker {...p} value={span} onValueChange={setSpan} />}
+          </Field>
+          <Field label="Поиск">
+            {(p) => (
+              <InputGroup prefix={<Icon>{search}</Icon>}>
+                <Input {...p} placeholder="Артикул или название" />
+              </InputGroup>
+            )}
+          </Field>
+          <Field label="С единицей">
+            {(p) => (
+              <InputGroup suffix="шт.">
+                <Input {...p} defaultValue="12" />
+              </InputGroup>
+            )}
+          </Field>
         </div>
         <Row label="sizes">
           {SIZES.map((size) => (
@@ -317,6 +520,128 @@ function Sheet() {
         <Row label="slider">
           <Slider defaultValue={40} className="w-64" />
         </Row>
+      </Section>
+
+      <Section title="Layers">
+        <Opened className="flex flex-col gap-8">
+          <Row label="select, open">
+            {/* По верху: списки разной длины, и центрирование строки уводило
+                короткий вниз. */}
+            <div className="flex items-start gap-3">
+              <div className="flex w-64 flex-col gap-1">
+                <Select
+                  aria-label="Окружение"
+                  defaultValue="stage"
+                  options={[
+                    { value: 'prod', label: 'production' },
+                    { value: 'stage', label: 'staging' },
+                    { value: 'dev', label: 'development' },
+                    { value: 'old', label: 'legacy', disabled: true },
+                  ]}
+                />
+              </div>
+              <div className="flex w-64 flex-col gap-1">
+                <Combobox
+                  aria-label="Регион"
+                  defaultValue="eu"
+                  options={['eu-west-1', 'eu-central-1', 'us-east-1']}
+                />
+              </div>
+              <div className="flex w-64 flex-col gap-1">
+                <TreeSelect
+                  aria-label="Склад"
+                  defaultValue="a-1"
+                  nodes={[
+                    {
+                      value: 'a',
+                      label: 'Склад А',
+                      children: [
+                        { value: 'a-1', label: 'Ряд 1' },
+                        { value: 'a-2', label: 'Ряд 2' },
+                      ],
+                    },
+                    {
+                      value: 'b',
+                      label: 'Склад Б',
+                      children: [{ value: 'b-1', label: 'Ряд 1' }],
+                    },
+                  ]}
+                />
+              </div>
+            </div>
+          </Row>
+          <Row label="date picker, open">
+            <div className="flex w-72 flex-col gap-1">
+              <DatePicker aria-label="Дата" value="2026-03-20" />
+            </div>
+          </Row>
+          <Row label="menu">
+            <SheetMenu />
+            <ObjectActions
+              primary={<Button variant="primary">Принять</Button>}
+              overflow={
+                <>
+                  <MenuItem shortcut="⌘P">Печать</MenuItem>
+                  <MenuItem>Скачать PDF</MenuItem>
+                  <MenuSeparator />
+                  <MenuItem variant="danger">Удалить</MenuItem>
+                </>
+              }
+            />
+          </Row>
+          <Row label="popover">
+            <SheetPopover />
+          </Row>
+          <Row label="dialog">
+            <Dialog
+              open={false}
+              onClose={() => {}}
+              title="Принять накладную?"
+              description="Позиции уйдут на склад, отменить приёмку нельзя."
+              footer={
+                <>
+                  <Button>Отмена</Button>
+                  <Button variant="primary">Принять</Button>
+                </>
+              }
+            >
+              <Text tone="secondary">12 позиций, сумма {RUB.format(184_300)}.</Text>
+            </Dialog>
+            <Dialog
+              open={false}
+              onClose={() => {}}
+              tone="danger"
+              title="Удалить накладную?"
+              footer={
+                <>
+                  <Button>Отмена</Button>
+                  <Button variant="danger">Удалить</Button>
+                </>
+              }
+            >
+              <Text tone="secondary">УПД-4471 и её позиции будут удалены.</Text>
+            </Dialog>
+          </Row>
+          <Row label="sheet">
+            <Sheet
+              open={false}
+              onClose={() => {}}
+              title="Фильтры"
+              description="Сужают список накладных"
+              width="28rem"
+              footer={<Button variant="primary">Показать 12</Button>}
+            >
+              <Stack gap={3}>
+                <Checkbox label="Только просроченные" defaultChecked />
+                <Checkbox label="С расхождениями" />
+                <Toggle label="Мои накладные" />
+              </Stack>
+            </Sheet>
+          </Row>
+          <Row label="toast">
+            <Toaster />
+          </Row>
+        </Opened>
       </Section>
 
       <Section title="Choice">
@@ -468,6 +793,23 @@ function Sheet() {
             <Tab href="#">История</Tab>
           </TabNav>
         </Row>
+        <Row label="local tabs">
+          <Tabs
+            label="Вид"
+            className="w-[28rem]"
+            items={[
+              {
+                label: 'Таблица',
+                content: <Text tone="secondary">Позиции списком.</Text>,
+              },
+              {
+                label: 'Расхождения',
+                count: 3,
+                content: <Text tone="secondary">Три позиции не сошлись.</Text>,
+              },
+            ]}
+          />
+        </Row>
         <Row label="breadcrumbs">
           <Breadcrumbs
             items={[
@@ -478,8 +820,13 @@ function Sheet() {
           />
         </Row>
         <Row label="pagination">
-          <Pagination page={7} pageCount={24} />
-          <Pagination page={1} pageCount={3} size="sm" />
+          <Pagination page={page} pageCount={24} onPageChange={setPage} />
+          <Pagination
+            page={smallPage}
+            pageCount={3}
+            size="sm"
+            onPageChange={setSmallPage}
+          />
         </Row>
         <Row label="tree">
           <Tree className="w-64">
@@ -529,6 +876,214 @@ function Sheet() {
             </ListItem>
           </List>
         </Row>
+      </Section>
+
+      <Section title="Layout">
+        <Row label="stack">
+          <Stack gap={2} className="w-64">
+            <Block>Первый</Block>
+            <Block>Второй</Block>
+            <Block>Третий</Block>
+          </Stack>
+          <Stack gap={0} divided className="w-64 rounded-sm border border-line">
+            <div className="px-3 py-2 text-meta">С разделителями</div>
+            <div className="px-3 py-2 text-meta">Между строками</div>
+            <div className="px-3 py-2 text-meta">Линия</div>
+          </Stack>
+        </Row>
+        <Row label="inline, grow">
+          <Inline gap={2} className="w-[32rem]">
+            <Block>Слева</Block>
+            <Grow>
+              <Block>Grow забирает остаток</Block>
+            </Grow>
+            <Block>Справа</Block>
+          </Inline>
+        </Row>
+        <Row label="cluster">
+          <Cluster gap={2} className="w-[28rem]">
+            {[
+              'booking-api',
+              'search-api',
+              'telegram-bot',
+              'postgres-main',
+              'redis',
+              'ingest',
+            ].map((name) => (
+              <Badge key={name} variant="outline">
+                {name}
+              </Badge>
+            ))}
+          </Cluster>
+        </Row>
+        <Row label="grid">
+          <Grid min="10rem" gap={3} className="w-[40rem]">
+            {Array.from({ length: 6 }, (_, i) => (
+              <Block key={i}>Ячейка {i + 1}</Block>
+            ))}
+          </Grid>
+        </Row>
+        <Row label="sidebar">
+          <Sidebar width="12rem" gap={4} className="w-[40rem]">
+            <Block>Боковая, 12rem</Block>
+            <Block>Содержимое забирает остальное</Block>
+          </Sidebar>
+        </Row>
+        <Row label="container">
+          <Container
+            measure="reading"
+            gutter={4}
+            className="rounded-sm border border-line py-3"
+          >
+            <Text>
+              Контейнер ограничивает ширину строки для чтения — около 68 знаков, чтобы
+              длинный текст не растягивался на весь экран.
+            </Text>
+          </Container>
+        </Row>
+        <Row label="section">
+          <div className="flex w-[40rem] flex-col gap-4">
+            <KitSection
+              title="Реквизиты"
+              description="Секция без рамки: заголовка и отступа хватает"
+              actions={<Button size="sm">Изменить</Button>}
+            >
+              <KeyValue
+                items={[
+                  { key: 'Поставщик', value: 'Причал' },
+                  { key: 'ИНН', value: '7707083893', mono: true },
+                ]}
+              />
+            </KitSection>
+            <KitSection title="Позиции" bounded>
+              <Text tone="secondary">
+                Секция с рамкой — когда она владеет содержимым.
+              </Text>
+            </KitSection>
+          </div>
+        </Row>
+        <Row label="scroll area">
+          <ScrollArea
+            maxHeight="8rem"
+            fade
+            className="w-64 rounded-sm border border-line"
+          >
+            <Stack gap={0} divided>
+              {Array.from({ length: 10 }, (_, i) => (
+                <div key={i} className="px-3 py-2 text-meta">
+                  Строка {i + 1}
+                </div>
+              ))}
+            </Stack>
+          </ScrollArea>
+        </Row>
+        <Row label="panel">
+          <Panel
+            title="Связанное"
+            actions={<IconButton size="sm" label="Закрыть" icon={<Icon>{x}</Icon>} />}
+            footer={
+              <Text variant="meta" tone="muted">
+                Обновлено в 12:40
+              </Text>
+            }
+            className="h-64 w-80 border border-line"
+          >
+            <KeyValue
+              items={[
+                { key: 'Заказ', value: '8812' },
+                { key: 'Склад', value: 'Москва, А' },
+              ]}
+            />
+          </Panel>
+        </Row>
+        <div data-figma-name="workspace" className="flex flex-col gap-2">
+          <span className="text-meta text-fg-muted">
+            split: навигация · объект · контекст
+          </span>
+          <Split className="h-[26rem] overflow-hidden rounded-sm border border-line">
+            <SideNav
+              hideOnNarrow={false}
+              header={
+                <div className="flex h-control-md items-center gap-2 px-[var(--cx-sidenav-inset)]">
+                  <span className="cx-sidenav-icon rounded-sm bg-accent text-micro font-semibold text-fg-inverted">
+                    C
+                  </span>
+                  <SideNavLabel className="text-ui font-semibold">Creatox</SideNavLabel>
+                </div>
+              }
+            >
+              <SideNavItem href="#" icon={<Icon>{menu}</Icon>}>
+                Обзор
+              </SideNavItem>
+              <SideNavItem href="#" icon={<Icon>{search}</Icon>} selected>
+                Накладные
+              </SideNavItem>
+              <SideNavItem href="#" icon={<Icon>{triangleAlert}</Icon>} count={3}>
+                Расхождения
+              </SideNavItem>
+            </SideNav>
+            <Stack gap={4} className="p-6">
+              <ObjectHeader
+                type="Накладная"
+                name="УПД-4471"
+                status={<Status tone="success">Оплачена</Status>}
+                actions={<Button variant="primary">Принять</Button>}
+              />
+              <Text tone="secondary">
+                Объект в центре забирает место; навигация слева сворачивается до иконок,
+                контекст справа уходит под объект, когда места не хватает.
+              </Text>
+            </Stack>
+            <Panel title="Связанное" mode="docked">
+              <KeyValue
+                items={[
+                  { key: 'Поставщик', value: 'Причал' },
+                  { key: 'Заказ', value: '8812' },
+                ]}
+              />
+            </Panel>
+          </Split>
+        </div>
+      </Section>
+
+      <Section title="SideNav">
+        <div className="flex h-80 items-stretch gap-8">
+          {[false, true].map((collapsed) => (
+            <SideNav
+              key={String(collapsed)}
+              className="border border-line"
+              defaultCollapsed={collapsed}
+              header={
+                <div className="flex h-control-md items-center gap-2 px-[var(--cx-sidenav-inset)]">
+                  <span className="cx-sidenav-icon rounded-sm bg-accent text-micro font-semibold text-fg-inverted">
+                    C
+                  </span>
+                  <SideNavLabel className="text-ui font-semibold">Creatox</SideNavLabel>
+                </div>
+              }
+              footer={
+                <SideNavItem href="#" icon={<Icon>{settings}</Icon>}>
+                  Настройки
+                </SideNavItem>
+              }
+            >
+              <SideNavItem href="#" icon={<Icon>{menu}</Icon>} selected>
+                Обзор
+              </SideNavItem>
+              <SideNavItem href="#" icon={<Icon>{search}</Icon>}>
+                Поиск
+              </SideNavItem>
+              <SideNavItem href="#" icon={<Icon>{triangleAlert}</Icon>} count={3}>
+                Инциденты
+              </SideNavItem>
+              <SideNavGroup title="Объекты">
+                <SideNavItem href="#" icon={<Icon>{bell}</Icon>} count={12}>
+                  Уведомления
+                </SideNavItem>
+              </SideNavGroup>
+            </SideNav>
+          ))}
+        </div>
       </Section>
 
       <Section title="Objects">
@@ -675,36 +1230,45 @@ function Sheet() {
           virtual={false}
           caption="DataTable — выбор, сортировка, детали"
         />
-        <Row label="loading / empty">
-          <div className="w-80">
-            <DataTable
-              rows={[]}
-              columns={COLUMNS}
-              getRowId={(r) => String(r.id)}
-              bounded
-              loading
-            />
-          </div>
-          <div className="w-80">
-            <DataTable
-              rows={[]}
-              columns={COLUMNS}
-              getRowId={(r) => String(r.id)}
-              bounded
-              virtual={false}
-            />
-          </div>
+        <Row label="sort button">
+          <SortButton>Не отсортировано</SortButton>
+          <SortButton direction="ascending">По возрастанию</SortButton>
+          <SortButton direction="descending">По убыванию</SortButton>
         </Row>
+        {/* Каждая на всю ширину и своей строкой: колонки таблицы шире 600px, и
+            в узкой коробке она прокручивалась бы внутри, а при переносе в
+            Figma без обрезки наезжала бы на соседнюю. */}
+        <div data-figma-name="loading" className="flex flex-col gap-2">
+          <span className="text-meta text-fg-muted">loading</span>
+          <DataTable
+            rows={[]}
+            columns={COLUMNS}
+            getRowId={(r) => String(r.id)}
+            bounded
+            loading
+          />
+        </div>
+        <div data-figma-name="empty" className="flex flex-col gap-2">
+          <span className="text-meta text-fg-muted">empty</span>
+          <DataTable
+            rows={[]}
+            columns={COLUMNS}
+            getRowId={(r) => String(r.id)}
+            bounded
+            virtual={false}
+          />
+        </div>
       </Section>
 
       <Section title="Calendar">
         <Row label="single">
-          <Calendar value="2026-03-20" defaultMonth="2026-03" />
+          <Calendar value={day} onValueChange={setDay} defaultMonth="2026-03" />
         </Row>
         <Row label="range">
           <Calendar
             mode="range"
-            range={{ start: '2026-03-09', end: '2026-03-13' }}
+            range={range}
+            onRangeChange={setRange}
             defaultMonth="2026-03"
           />
         </Row>
@@ -724,4 +1288,56 @@ function Sheet() {
   )
 }
 
-createRoot(document.getElementById('root')!).render(<Sheet />)
+function SheetMenu() {
+  const popover = usePopover()
+  return (
+    <div className="flex flex-col gap-1">
+      <Button {...popover.trigger} icon={<Icon>{ellipsis}</Icon>}>
+        Действия
+      </Button>
+      <Popover {...popover.content}>
+        <Menu>
+          <MenuLabel>Накладная</MenuLabel>
+          <MenuItem icon={<Icon>{pencil}</Icon>} shortcut="⌘E">
+            Изменить
+          </MenuItem>
+          <MenuItem icon={<Icon>{check}</Icon>}>Принять</MenuItem>
+          <MenuItem disabled>Отправить в 1С</MenuItem>
+          <MenuSeparator />
+          <MenuItem variant="danger" icon={<Icon>{x}</Icon>}>
+            Удалить
+          </MenuItem>
+        </Menu>
+      </Popover>
+    </div>
+  )
+}
+
+function SheetPopover() {
+  const popover = usePopover()
+  return (
+    <div className="flex flex-col gap-1">
+      <Button {...popover.trigger} icon={<Icon>{bell}</Icon>}>
+        Уведомления
+      </Button>
+      <Popover {...popover.content} className="w-72 p-3">
+        <Stack gap={2}>
+          <Text variant="label">Уведомления</Text>
+          <Text variant="meta" tone="muted">
+            Поповер держит что угодно: форму, список, подсказку.
+          </Text>
+          <Inline gap={2} justify="end">
+            <Button size="sm" variant="quiet">
+              Позже
+            </Button>
+            <Button size="sm" variant="primary" icon={<Icon>{settings}</Icon>}>
+              Настроить
+            </Button>
+          </Inline>
+        </Stack>
+      </Popover>
+    </div>
+  )
+}
+
+createRoot(document.getElementById('root')!).render(<ComponentSheet />)
