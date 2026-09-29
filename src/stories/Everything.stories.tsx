@@ -46,6 +46,10 @@ import {
   SegmentedControl,
   Select,
   Separator,
+  SideNav,
+  SideNavGroup,
+  SideNavItem,
+  SideNavLabel,
   Skeleton,
   Slider,
   Stack,
@@ -468,6 +472,36 @@ function Gallery() {
           />
 
           <Pagination page={page} pageCount={24} onPageChange={setPage} />
+
+          {/* The column folds to a rail on the strip at the bottom; the state
+              is a checkbox, so the fold is CSS and the page around it stays. */}
+          <div className="flex h-80 rounded-control border border-line">
+            <SideNav
+              header={
+                <div className="flex h-control-md items-center gap-2 px-[var(--cx-sidenav-inset)]">
+                  <span className="cx-sidenav-icon rounded-sm bg-accent text-micro font-semibold text-fg-inverted">
+                    C
+                  </span>
+                  <SideNavLabel className="text-ui font-semibold">Creatox</SideNavLabel>
+                </div>
+              }
+            >
+              <SideNavItem href="#" icon={<Dots />} selected>
+                Overview
+              </SideNavItem>
+              <SideNavItem href="#" icon={<Dots />} count={3}>
+                Incidents
+              </SideNavItem>
+              <SideNavGroup title="Objects">
+                <SideNavItem href="#" icon={<Dots />}>
+                  booking-api
+                </SideNavItem>
+              </SideNavGroup>
+            </SideNav>
+            <div className="flex-1 border-l border-line p-4">
+              <Text tone="secondary">Fold it with the strip at the bottom.</Text>
+            </div>
+          </div>
         </Stack>
       </Section>
 

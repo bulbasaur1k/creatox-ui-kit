@@ -8,7 +8,7 @@ UI kit для React на Tailwind v4. Состояние по возможнос
 
 ## Что делает платформа
 
-`Tree` — это `<details>`, `Dialog` — `<dialog>`, `Popover` и `Menu` — атрибут `popover`, локальные `Tabs` — radio-группа, тултип — `::after { content: attr(…) }`, рост `Textarea` — `field-sizing`, действия строк — `group-hover` и `:focus-within`. Поповеры позиционирует CSS anchor positioning.
+`Tree` — это `<details>`, `Dialog` — `<dialog>`, `Popover` и `Menu` — атрибут `popover`, локальные `Tabs` — radio-группа, свёрнутость `SideNav` — чекбокс, тултип — `::after { content: attr(…) }`, рост `Textarea` — `field-sizing`, действия строк — `group-hover` и `:focus-within`. Поповеры позиционирует CSS anchor positioning.
 
 Поэтому `usePopover()` не хранит состояния, у `Tree` нет набора открытых узлов, у локальных табов нет `useState`.
 
@@ -306,7 +306,7 @@ export const $saveResult = createStore<'success' | 'error' | null>(null)
 
 ## Состав
 
-**Layout** — `Root`, `Stack`, `Inline`, `Grow`, `Cluster`, `Grid`, `Split`, `Sidebar`, `Section`, `Container`, `ScrollArea`
+**Layout** — `Root`, `Stack`, `Inline`, `Grow`, `Cluster`, `Grid`, `Split`, `Sidebar`, `SideNav`, `Section`, `Container`, `ScrollArea`
 
 **Примитивы** — `Text`, `Code`, `Link`, `Icon`, `Button`, `IconButton`, `Field`, `Input`, `Calendar`, `DatePicker`, `DateRangePicker`, `TimePicker`, `Textarea`, `Select`, `Combobox`, `InputGroup`, `PinInput`, `Checkbox`, `Radio`, `Toggle`, `SegmentedControl`, `Slider`, `Progress`, `Badge`, `Status`, `Avatar`, `Separator`, `Skeleton`, `EmptyState`, `Popover`, `Menu`, `MenuItem`, `Dialog`, `Sheet`, `Toaster`, `Alert`, `Panel`, `Table`, `Th`, `Td`, `Tr`, `RowActions`, `SortButton`, `List`, `ListItem`, `Pagination`, `Tree`, `TreeNode`, `TreeLeaf`, `TreeSelect`, `Upload`, `UploadList`, `UploadItem`, `TabNav`, `Tab`, `Tabs`, `KeyValue`
 
@@ -357,6 +357,29 @@ Escape по той же причине перехвачен: нативно он
 Длительности две и они разные: `--cx-sheet-enter` — 400ms, `--cx-sheet-exit` — 250ms. Причина в расстоянии: `--duration-enter` отмеряет приход слоя, который уже на месте, а шторка пересекает почти весь экран, и 180ms на 700 пикселей — это кадр в начале, кадр в конце и нечего проследить глазом. Причина разницы между ними — внимание: приходящая шторка и есть событие, ради неё лишняя сотня миллисекунд, а уходящая мешает, и от неё требуется только быть видимой, а не мгновенной. Кривые — `--cx-sheet-ease-enter` и `--cx-sheet-ease-exit`, пара emphasized из Material: `cubic-bezier(0.05, 0.7, 0.1, 1)` на торможение и `cubic-bezier(0.3, 0, 0.8, 0.15)` на разгон.
 
 Токены `--cx-`, а не четвёртый и пятый `--duration-*`: ими пользуется только шторка, и новыми ступенями шкалы для остального кита они не являются. `prefers-reduced-motion` режет их вместе со всем остальным.
+
+## Боковая навигация
+
+`SideNav` — колонка навигации, которая сворачивается до рельса из иконок стрелкой внизу. Первая колонка `Split` подстраивается под неё сама.
+
+```tsx
+<Split>
+  <SideNav header={<SideNavLabel>Creatox</SideNavLabel>}>
+    <SideNavItem href="/" icon={<Icon>{menu}</Icon>} selected>
+      Обзор
+    </SideNavItem>
+    <SideNavItem href="/incidents" icon={<Icon>{triangleAlert}</Icon>} count={3}>
+      Инциденты
+    </SideNavItem>
+    <SideNavGroup title="Объекты" onlyExpanded>
+      <Tree>…</Tree>
+    </SideNavGroup>
+  </SideNav>
+  <main>…</main>
+</Split>
+```
+
+Свёрнутость держит чекбокс, поэтому сворачивание — CSS-переход ширины и подписей, без перерисовки React: иконки остаются на месте, подписи гаснут, каждый пункт подписывается тултипом рядом с рельсом. Своё состояние продукт ведёт через `collapsed` и `onCollapsedChange` (и тогда может убрать стрелку `toggle={false}`), стартовое — `defaultCollapsed`. Что не сворачивается до иконки — дерево объектов, форма фильтра, — кладётся в `SideNavGroup onlyExpanded` и на рельсе прячется. Тело колонки прокручивается само, стрелка остаётся у нижнего края экрана.
 
 ## Адаптивность
 

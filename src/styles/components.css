@@ -91,6 +91,16 @@
     min-inline-size: 0;
   }
 
+  /* A SideNav sizes itself — 15rem open, a rail folded — and the track has
+     to follow it rather than hold it to the navigation minimum above. */
+  .cx-split[data-regions='2']:has(> .cx-sidenav:first-child) {
+    grid-template-columns: auto minmax(30rem, 1fr);
+  }
+
+  .cx-split[data-regions='3']:has(> .cx-sidenav:first-child) {
+    grid-template-columns: auto minmax(30rem, 2.4fr) minmax(17rem, 1fr);
+  }
+
   /* The literals mirror `--container-wide` and `--container-medium`. They
      cannot read the token: a container query condition takes no custom
      property, the same way a media query does not. The variant form used in
@@ -106,6 +116,10 @@
       grid-column: 1 / -1;
       border-inline-start: 0;
       border-block-start: 1px solid var(--color-line);
+    }
+
+    .cx-split[data-regions='3']:has(> .cx-sidenav:first-child) {
+      grid-template-columns: auto minmax(0, 1fr);
     }
   }
 
@@ -123,6 +137,259 @@
     /* Navigation is redundant once the object fills the viewport. */
     .cx-split > [data-cx-collapsible='true'] {
       display: none;
+    }
+
+    /* Repeated with the SideNav selector because its `:has()` rules above are
+       more specific than the one-column rule and would otherwise keep a track
+       for a column that has just been hidden. */
+    .cx-split[data-regions='2']:has(> .cx-sidenav:first-child),
+    .cx-split[data-regions='3']:has(> .cx-sidenav:first-child) {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  /* ── SideNav — the navigation column that folds down to a rail ──────────
+     The checkbox comes first, so everything after it reads the folded state
+     through `~`, and the column reads its own width through `:has()`. Two
+     things move: the column's width and the labels' opacity. Icons hold
+     their x, which is what makes the fold read as one menu getting narrower
+     rather than a second menu taking its place.                            */
+  .cx-sidenav {
+    --cx-sidenav-pad: --spacing(2);
+    --cx-sidenav-icon: 1.125rem;
+    /* The rail is one control-height square plus the body padding, so the
+       icon stays exactly where it was and ends up centred in what is left. */
+    --cx-sidenav-rail: calc(var(--spacing-control-md) + 2 * var(--cx-sidenav-pad));
+    --cx-sidenav-inset: calc((var(--spacing-control-md) - var(--cx-sidenav-icon)) / 2);
+
+    inline-size: var(--cx-sidenav-width, 15rem);
+    color: var(--color-fg);
+    transition: inline-size var(--duration-enter) var(--ease-snap);
+  }
+
+  .cx-sidenav:has(.cx-sidenav-state:checked) {
+    inline-size: var(--cx-sidenav-rail);
+  }
+
+  /* The nav is stretched to its grid area, and a stretched item's height is
+     definite — so `100%` here is the column, and the sticky part is a
+     viewport tall or the column tall, whichever is shorter. Outside a grid
+     or flex row the percentage resolves to nothing and a viewport it is. */
+  .cx-sidenav-column {
+    position: sticky;
+    inset-block-start: 0;
+    display: flex;
+    flex-direction: column;
+    block-size: 100dvh;
+    max-block-size: 100%;
+  }
+
+  .cx-sidenav-header,
+  .cx-sidenav-footer {
+    flex-shrink: 0;
+    padding: var(--cx-sidenav-pad);
+    overflow: hidden;
+  }
+
+  .cx-sidenav-header {
+    border-block-end: 1px solid var(--color-line);
+  }
+
+  .cx-sidenav-footer {
+    border-block-start: 1px solid var(--color-line);
+  }
+
+  /* The body scrolls on its own, so a long menu never scrolls the page under
+     it. No `overscroll-behavior: contain`: a menu shorter than the column has
+     nothing to scroll, and `contain` on such a box swallows the wheel. The
+     horizontal axis is clipped outright — while the column narrows, the
+     labels would otherwise summon a scrollbar for the length of the fold. */
+  .cx-sidenav-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: --spacing(0.5);
+    min-block-size: 0;
+    padding: var(--cx-sidenav-pad);
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+  }
+
+  .cx-sidenav-item {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: --spacing(2);
+    block-size: var(--spacing-control-md);
+    padding-inline: var(--cx-sidenav-inset);
+    border: 0;
+    border-radius: var(--radius-control);
+    background: none;
+    color: var(--color-fg-secondary);
+    font: inherit;
+    font-weight: 500;
+    text-align: start;
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    cursor: pointer;
+    transition:
+      background-color var(--duration-instant) var(--ease-snap),
+      color var(--duration-instant) var(--ease-snap);
+  }
+
+  .cx-sidenav-item:hover {
+    background-color: var(--color-hover);
+    color: var(--color-fg);
+  }
+
+  .cx-sidenav-item:active {
+    background-color: var(--color-active);
+  }
+
+  .cx-sidenav-item[aria-current] {
+    background-color: var(--color-selected);
+    color: var(--color-fg-accent);
+  }
+
+  /* An <Icon> is 1em, so the box's font size is the icon's size. */
+  .cx-sidenav-icon {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    inline-size: var(--cx-sidenav-icon);
+    block-size: var(--cx-sidenav-icon);
+    font-size: var(--cx-sidenav-icon);
+  }
+
+  .cx-sidenav-label {
+    flex: 1;
+    min-inline-size: 0;
+    overflow: hidden;
+    transition:
+      opacity var(--duration-snap) var(--ease-snap),
+      visibility 0s;
+  }
+
+  .cx-sidenav-count {
+    flex-shrink: 0;
+    font-size: var(--text-micro);
+    font-variant-numeric: tabular-nums;
+    color: var(--color-fg-muted);
+    transition:
+      opacity var(--duration-snap) var(--ease-snap),
+      visibility 0s;
+  }
+
+  /* Folded: labels fade, then leave the accessibility tree. `visibility`
+     waits for the fade so nothing pops out before it is gone. */
+  .cx-sidenav-state:checked ~ * .cx-sidenav-label,
+  .cx-sidenav-state:checked ~ * .cx-sidenav-count {
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity var(--duration-snap) var(--ease-snap),
+      visibility 0s linear var(--duration-snap);
+  }
+
+  .cx-sidenav-group {
+    display: flex;
+    flex-direction: column;
+    gap: --spacing(0.5);
+  }
+
+  .cx-sidenav-group + .cx-sidenav-group {
+    margin-block-start: --spacing(2);
+  }
+
+  .cx-sidenav-group-title {
+    display: flex;
+    align-items: center;
+    block-size: --spacing(6);
+    padding-inline: var(--cx-sidenav-inset);
+    font-size: var(--text-micro);
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-fg-muted);
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  /* On the rail a heading has nowhere to go; a hairline keeps the grouping. */
+  .cx-sidenav-state:checked ~ * .cx-sidenav-group-title {
+    background: linear-gradient(var(--color-line), var(--color-line)) center /
+      calc(100% - 2 * var(--cx-sidenav-inset)) 1px no-repeat;
+  }
+
+  .cx-sidenav-state:checked ~ * [data-only-expanded] {
+    display: none;
+  }
+
+  /* The strip with the chevron. Its chevron sits in the icon column, so
+     folding moves nothing on it either. */
+  .cx-sidenav-toggle {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: --spacing(2);
+    block-size: calc(var(--spacing-control-md) + 2 * var(--cx-sidenav-pad));
+    padding-inline: calc(var(--cx-sidenav-pad) + var(--cx-sidenav-inset));
+    border-block-start: 1px solid var(--color-line);
+    color: var(--color-fg-muted);
+    font-size: var(--text-meta);
+    white-space: nowrap;
+    overflow: hidden;
+    cursor: pointer;
+    user-select: none;
+    transition:
+      background-color var(--duration-instant) var(--ease-snap),
+      color var(--duration-instant) var(--ease-snap);
+  }
+
+  .cx-sidenav-toggle:hover {
+    background-color: var(--color-hover);
+    color: var(--color-fg);
+  }
+
+  .cx-sidenav-toggle:active {
+    background-color: var(--color-active);
+  }
+
+  .cx-sidenav-chevron {
+    transition: rotate var(--duration-enter) var(--ease-snap);
+  }
+
+  .cx-sidenav-state:checked ~ .cx-sidenav-toggle .cx-sidenav-chevron {
+    rotate: 180deg;
+  }
+
+  /* The input is out of sight, so its focus has to show on the strip. */
+  .cx-sidenav-state:focus-visible ~ .cx-sidenav-toggle {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+  }
+
+  /* Tooltips are for the rail; open, the label is right there. */
+  .cx-sidenav:not(:has(.cx-sidenav-state:checked)) [data-cx-tooltip]::after {
+    display: none;
+  }
+
+  /* On the rail the tooltip has to get out of the body, which scrolls and so
+     clips everything in it. Fixed puts it outside the clip — `.cx-root` is
+     its containing block, not the column — and the row it belongs to is its
+     implicit anchor, so it lands beside that row. Without anchor positioning
+     it stays where the generic tooltip goes and may be cut at the edge. */
+  @supports (anchor-name: --cx-a) {
+    .cx-sidenav [data-cx-tooltip]::after {
+      position: fixed;
+      inset: auto;
+      translate: 0;
+      position-area: inline-end center;
+      margin: 0;
+      margin-inline-start: --spacing(2);
     }
   }
 

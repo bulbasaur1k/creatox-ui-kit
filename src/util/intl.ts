@@ -48,6 +48,10 @@ export interface Labels {
   uploadDone: string
   uploadFailed: ReactNode
   remove: string
+  /** The strip at the bottom of a `SideNav`, and the name of its switch. */
+  collapseNav: string
+  /** The tooltip on that strip once the column is a rail. */
+  expandNav: string
 }
 
 export const LABELS_EN: Labels = {
@@ -76,6 +80,8 @@ export const LABELS_EN: Labels = {
   uploadDone: 'Uploaded',
   uploadFailed: 'Upload failed',
   remove: 'Remove',
+  collapseNav: 'Collapse',
+  expandNav: 'Expand',
 }
 
 export const LABELS_RU: Labels = {
@@ -104,6 +110,8 @@ export const LABELS_RU: Labels = {
   uploadDone: 'Загружено',
   uploadFailed: 'Не удалось загрузить',
   remove: 'Удалить',
+  collapseNav: 'Свернуть',
+  expandNav: 'Развернуть',
 }
 
 export interface IntlValue {
