@@ -3,10 +3,12 @@ import {
   useId,
   useRef,
   type ComponentPropsWithoutRef,
+  type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from 'react'
 import { cx } from '../util/cx'
 import { vars } from '../util/tokens'
+import { useFinePointer } from '../util/pointer'
 
 export interface DialogProps extends Omit<
   ComponentPropsWithoutRef<'dialog'>,
@@ -25,8 +27,22 @@ export interface DialogProps extends Omit<
    * phone wants, because the controls end up under the thumb rather than
    * halfway up the screen. Still the same `<dialog>`: modality, focus and
    * Escape do not change with where it sits.
+   *
+   * `auto` picks between the two by pointer: the sheet under a finger, the
+   * centred card under a mouse. Centring is the trouble it avoids on a phone
+   * rather than a preference it expresses on a desktop — in a webview the
+   * dialog is centred against the full window height while less of it is
+   * visible (the host app takes the top, the keyboard takes the bottom), and
+   * the card slides under the bottom edge with only its title showing.
    */
-  placement?: 'center' | 'sheet'
+  placement?: 'center' | 'sheet' | 'auto'
+  /**
+   * Whether a click on the backdrop closes the dialog. On by default: a modal
+   * that only answers its buttons feels stuck under a mouse, and the sheet a
+   * phone sees has always closed this way. Off for a flow that may not be
+   * abandoned in — Escape stays the browser's either way.
+   */
+  dismissible?: boolean
 }
 
 /**
@@ -46,6 +62,7 @@ export function Dialog({
   width,
   tone = 'default',
   placement = 'center',
+  dismissible = true,
   className,
   children,
   style,
@@ -55,6 +72,8 @@ export function Dialog({
   // Per instance, not a constant: two mounted dialogs sharing one id would
   // point both `aria-labelledby` attributes at whichever heading came first.
   const titleId = useId()
+  const fine = useFinePointer()
+  const resolved = placement === 'auto' ? (fine ? 'center' : 'sheet') : placement
 
   useEffect(() => {
     const dialog = ref.current
@@ -63,12 +82,21 @@ export function Dialog({
     else if (!open && dialog.open) dialog.close()
   }, [open])
 
+  // The backdrop is part of the dialog element, so a click that lands on the
+  // element itself landed outside everything the dialog draws — the same test
+  // the sheet makes. Escape is not intercepted: the browser's instant close
+  // has no exit animation here to defer it for.
+  const onBackdropClick = (event: ReactMouseEvent<HTMLDialogElement>) => {
+    if (dismissible && event.target === ref.current) onClose()
+  }
+
   return (
     <dialog
       ref={ref}
       onClose={onClose}
+      onClick={onBackdropClick}
       aria-labelledby={titleId}
-      data-placement={placement}
+      data-placement={resolved}
       className={cx(
         'cx-dialog overflow-visible border border-line p-0',
         'bg-overlay text-fg shadow-overlay',
@@ -78,7 +106,7 @@ export function Dialog({
         // utility in the utilities layer would win against it — the dialog
         // would sit on the page while closed.
         'open:flex open:flex-col',
-        placement === 'sheet'
+        resolved === 'sheet'
           ? cx(
               // Pinned by an offset, not pushed by an auto margin. `mt-auto`
               // used to do it, and an auto margin is a leftover-space
