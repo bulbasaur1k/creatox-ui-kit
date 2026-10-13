@@ -618,14 +618,10 @@
        at, with no number to keep in step. */
     translate: 0 100%;
 
-    /* The exit is stated on the closed state, and it is not the arrival
-       backwards: this one leaves from rest and finishes against the edge of
-       the screen, so it accelerates. Run out with the decelerating curve it
-       starts at full speed, which is the close that reads as a snap. */
-    transition:
-      translate var(--cx-sheet-exit) var(--cx-sheet-ease-exit),
-      display var(--cx-sheet-exit) allow-discrete,
-      overlay var(--cx-sheet-exit) allow-discrete;
+    /* JS closes only after the slide has finished. Do not retain display or
+       the top layer for a second exit: a closed dialog can otherwise remain
+       visible inside an ancestor's containing block (e.g. a blurred header). */
+    transition: none;
   }
 
   .cx-sheet[open] {
@@ -637,8 +633,7 @@
        leaving is out of the way as soon as it is out of the way. */
     transition:
       translate var(--cx-sheet-enter) var(--cx-sheet-ease-enter),
-      display var(--cx-sheet-enter) allow-discrete,
-      overlay var(--cx-sheet-enter) allow-discrete;
+      display var(--cx-sheet-enter) allow-discrete;
   }
 
   /* The opening frame. Without it there is no previous style to slide from
@@ -675,7 +670,7 @@
   /* The backdrop goes with the sheet rather than on the shared dialog timing,
      so the page does not come back before the sheet has left it. */
   .cx-sheet::backdrop {
-    transition-duration: var(--cx-sheet-enter);
+    transition: opacity var(--cx-sheet-enter) var(--ease-snap);
   }
 
   .cx-sheet[open][data-closing]::backdrop {

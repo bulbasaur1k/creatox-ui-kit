@@ -164,7 +164,8 @@ export function Sheet({
     const finish = () => {
       if (closed) return
       closed = true
-      delete dialog.dataset.closing
+      // Keep the exit state until the next opening. Resetting it here can
+      // start an arrival before close() removes the dialog from the top layer.
       if (dialog.open) dialog.close()
     }
 
